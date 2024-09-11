@@ -1,5 +1,6 @@
 /*
 
+Copyright (c) 2024 Philipp Diethelm
 Copyright (c) 2014-2018 Alex Forencich
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -38,7 +39,10 @@ module udp_complete_64 #(
     parameter ARP_REQUEST_TIMEOUT = 125000000*30,
     parameter UDP_CHECKSUM_GEN_ENABLE = 1,
     parameter UDP_CHECKSUM_PAYLOAD_FIFO_DEPTH = 2048,
-    parameter UDP_CHECKSUM_HEADER_FIFO_DEPTH = 8
+    parameter UDP_CHECKSUM_HEADER_FIFO_DEPTH = 8,
+    parameter ICMP_CHECKSUM_GEN_ENABLE = 1,
+    parameter ICMP_CHECKSUM_PAYLOAD_FIFO_DEPTH = 2048,
+    parameter ICMP_CHECKSUM_HEADER_FIFO_DEPTH = 8
 )
 (
     input  wire        clk,
@@ -181,6 +185,8 @@ module udp_complete_64 #(
     output wire        ip_tx_busy,
     output wire        udp_rx_busy,
     output wire        udp_tx_busy,
+    output wire        icmp_rx_busy,
+    output wire        icmp_tx_busy,
     output wire        ip_rx_error_header_early_termination,
     output wire        ip_rx_error_payload_early_termination,
     output wire        ip_rx_error_invalid_header,
@@ -190,6 +196,9 @@ module udp_complete_64 #(
     output wire        udp_rx_error_header_early_termination,
     output wire        udp_rx_error_payload_early_termination,
     output wire        udp_tx_error_payload_early_termination,
+    output wire        icmp_rx_error_header_early_termination,
+    output wire        icmp_rx_error_payload_early_termination,
+    output wire        icmp_tx_error_payload_early_termination,
 
     /*
      * Configuration
@@ -283,28 +292,74 @@ wire udp_tx_ip_payload_axis_tlast;
 wire udp_tx_ip_payload_axis_tuser;
 wire udp_tx_ip_payload_axis_tready;
 
+wire icmp_rx_ip_hdr_valid;
+wire icmp_rx_ip_hdr_ready;
+wire [47:0] icmp_rx_ip_eth_dest_mac;
+wire [47:0] icmp_rx_ip_eth_src_mac;
+wire [15:0] icmp_rx_ip_eth_type;
+wire [3:0] icmp_rx_ip_version;
+wire [3:0] icmp_rx_ip_ihl;
+wire [5:0] icmp_rx_ip_dscp;
+wire [1:0] icmp_rx_ip_ecn;
+wire [15:0] icmp_rx_ip_length;
+wire [15:0] icmp_rx_ip_identification;
+wire [2:0] icmp_rx_ip_flags;
+wire [12:0] icmp_rx_ip_fragment_offset;
+wire [7:0] icmp_rx_ip_ttl;
+wire [7:0] icmp_rx_ip_protocol;
+wire [15:0] icmp_rx_ip_header_checksum;
+wire [31:0] icmp_rx_ip_source_ip;
+wire [31:0] icmp_rx_ip_dest_ip;
+wire [63:0] icmp_rx_ip_payload_axis_tdata;
+wire [7:0] icmp_rx_ip_payload_axis_tkeep;
+wire icmp_rx_ip_payload_axis_tvalid;
+wire icmp_rx_ip_payload_axis_tlast;
+wire icmp_rx_ip_payload_axis_tuser;
+wire icmp_rx_ip_payload_axis_tready;
+
+wire icmp_tx_ip_hdr_valid;
+wire icmp_tx_ip_hdr_ready;
+wire [5:0] icmp_tx_ip_dscp;
+wire [1:0] icmp_tx_ip_ecn;
+wire [15:0] icmp_tx_ip_length;
+wire [7:0] icmp_tx_ip_ttl;
+wire [7:0] icmp_tx_ip_protocol;
+wire [31:0] icmp_tx_ip_source_ip;
+wire [31:0] icmp_tx_ip_dest_ip;
+wire [63:0] icmp_tx_ip_payload_axis_tdata;
+wire [7:0] icmp_tx_ip_payload_axis_tkeep;
+wire icmp_tx_ip_payload_axis_tvalid;
+wire icmp_tx_ip_payload_axis_tlast;
+wire icmp_tx_ip_payload_axis_tuser;
+wire icmp_tx_ip_payload_axis_tready;
+
 /*
  * Input classifier (ip_protocol)
  */
 wire s_select_udp = (ip_rx_ip_protocol == 8'h11);
-wire s_select_ip = !s_select_udp;
+wire s_select_icmp = (ip_rx_ip_protocol == 8'h01);
+wire s_select_ip = !s_select_udp && !s_select_icmp;
 
 reg s_select_udp_reg = 1'b0;
+reg s_select_icmp_reg = 1'b0;
 reg s_select_ip_reg = 1'b0;
 
 always @(posedge clk) begin
     if (rst) begin
         s_select_udp_reg <= 1'b0;
+        s_select_icmp_reg <= 1'b0;
         s_select_ip_reg <= 1'b0;
     end else begin
         if (ip_rx_ip_payload_axis_tvalid) begin
-            if ((!s_select_udp_reg && !s_select_ip_reg) ||
+            if ((!s_select_udp_reg && !s_select_icmp_reg && !s_select_ip_reg) ||
                 (ip_rx_ip_payload_axis_tvalid && ip_rx_ip_payload_axis_tready && ip_rx_ip_payload_axis_tlast)) begin
                 s_select_udp_reg <= s_select_udp;
+                s_select_icmp_reg <= s_select_icmp;
                 s_select_ip_reg <= s_select_ip;
             end
         end else begin
             s_select_udp_reg <= 1'b0;
+            s_select_icmp_reg <= 1'b0;
             s_select_ip_reg <= 1'b0;
         end
     end
@@ -334,6 +389,30 @@ assign udp_rx_ip_payload_axis_tvalid = s_select_udp_reg && ip_rx_ip_payload_axis
 assign udp_rx_ip_payload_axis_tlast = ip_rx_ip_payload_axis_tlast;
 assign udp_rx_ip_payload_axis_tuser = ip_rx_ip_payload_axis_tuser;
 
+// IP frame to ICMP module
+assign icmp_rx_ip_hdr_valid = s_select_icmp && ip_rx_ip_hdr_valid;
+assign icmp_rx_ip_eth_dest_mac = ip_rx_ip_eth_dest_mac;
+assign icmp_rx_ip_eth_src_mac = ip_rx_ip_eth_src_mac;
+assign icmp_rx_ip_eth_type = ip_rx_ip_eth_type;
+assign icmp_rx_ip_version = ip_rx_ip_version;
+assign icmp_rx_ip_ihl = ip_rx_ip_ihl;
+assign icmp_rx_ip_dscp = ip_rx_ip_dscp;
+assign icmp_rx_ip_ecn = ip_rx_ip_ecn;
+assign icmp_rx_ip_length = ip_rx_ip_length;
+assign icmp_rx_ip_identification = ip_rx_ip_identification;
+assign icmp_rx_ip_flags = ip_rx_ip_flags;
+assign icmp_rx_ip_fragment_offset = ip_rx_ip_fragment_offset;
+assign icmp_rx_ip_ttl = ip_rx_ip_ttl;
+assign icmp_rx_ip_protocol = 8'h01;
+assign icmp_rx_ip_header_checksum = ip_rx_ip_header_checksum;
+assign icmp_rx_ip_source_ip = ip_rx_ip_source_ip;
+assign icmp_rx_ip_dest_ip = ip_rx_ip_dest_ip;
+assign icmp_rx_ip_payload_axis_tdata = ip_rx_ip_payload_axis_tdata;
+assign icmp_rx_ip_payload_axis_tkeep = ip_rx_ip_payload_axis_tkeep;
+assign icmp_rx_ip_payload_axis_tvalid = s_select_icmp_reg && ip_rx_ip_payload_axis_tvalid;
+assign icmp_rx_ip_payload_axis_tlast = ip_rx_ip_payload_axis_tlast;
+assign icmp_rx_ip_payload_axis_tuser = ip_rx_ip_payload_axis_tuser;
+
 // External IP frame output
 assign m_ip_hdr_valid = s_select_ip && ip_rx_ip_hdr_valid;
 assign m_ip_eth_dest_mac = ip_rx_ip_eth_dest_mac;
@@ -359,16 +438,18 @@ assign m_ip_payload_axis_tlast = ip_rx_ip_payload_axis_tlast;
 assign m_ip_payload_axis_tuser = ip_rx_ip_payload_axis_tuser;
 
 assign ip_rx_ip_hdr_ready = (s_select_udp && udp_rx_ip_hdr_ready) ||
+                            (s_select_icmp && icmp_rx_ip_hdr_ready) ||
                             (s_select_ip && m_ip_hdr_ready);
 
 assign ip_rx_ip_payload_axis_tready = (s_select_udp_reg && udp_rx_ip_payload_axis_tready) ||
+                                      (s_select_icmp_reg && icmp_rx_ip_payload_axis_tready) ||
                                       (s_select_ip_reg && m_ip_payload_axis_tready);
 
 /*
  * Output arbiter
  */
 ip_arb_mux #(
-    .S_COUNT(2),
+    .S_COUNT(3),
     .DATA_WIDTH(64),
     .KEEP_ENABLE(1),
     .ID_ENABLE(0),
@@ -382,32 +463,32 @@ ip_arb_mux_inst (
     .clk(clk),
     .rst(rst),
     // IP frame inputs
-    .s_ip_hdr_valid({s_ip_hdr_valid, udp_tx_ip_hdr_valid}),
-    .s_ip_hdr_ready({s_ip_hdr_ready, udp_tx_ip_hdr_ready}),
+    .s_ip_hdr_valid({s_ip_hdr_valid, udp_tx_ip_hdr_valid, icmp_tx_ip_hdr_valid}),
+    .s_ip_hdr_ready({s_ip_hdr_ready, udp_tx_ip_hdr_ready, icmp_tx_ip_hdr_ready}),
     .s_eth_dest_mac(0),
     .s_eth_src_mac(0),
     .s_eth_type(0),
     .s_ip_version(0),
     .s_ip_ihl(0),
-    .s_ip_dscp({s_ip_dscp, udp_tx_ip_dscp}),
-    .s_ip_ecn({s_ip_ecn, udp_tx_ip_ecn}),
-    .s_ip_length({s_ip_length, udp_tx_ip_length}),
+    .s_ip_dscp({s_ip_dscp, udp_tx_ip_dscp, icmp_tx_ip_dscp}),
+    .s_ip_ecn({s_ip_ecn, udp_tx_ip_ecn, icmp_tx_ip_ecn}),
+    .s_ip_length({s_ip_length, udp_tx_ip_length, icmp_tx_ip_length}),
     .s_ip_identification(0),
     .s_ip_flags(0),
     .s_ip_fragment_offset(0),
-    .s_ip_ttl({s_ip_ttl, udp_tx_ip_ttl}),
-    .s_ip_protocol({s_ip_protocol, udp_tx_ip_protocol}),
+    .s_ip_ttl({s_ip_ttl, udp_tx_ip_ttl, icmp_tx_ip_ttl}),
+    .s_ip_protocol({s_ip_protocol, udp_tx_ip_protocol, icmp_tx_ip_protocol}),
     .s_ip_header_checksum(0),
-    .s_ip_source_ip({s_ip_source_ip, udp_tx_ip_source_ip}),
-    .s_ip_dest_ip({s_ip_dest_ip, udp_tx_ip_dest_ip}),
-    .s_ip_payload_axis_tdata({s_ip_payload_axis_tdata, udp_tx_ip_payload_axis_tdata}),
-    .s_ip_payload_axis_tkeep({s_ip_payload_axis_tkeep, udp_tx_ip_payload_axis_tkeep}),
-    .s_ip_payload_axis_tvalid({s_ip_payload_axis_tvalid, udp_tx_ip_payload_axis_tvalid}),
-    .s_ip_payload_axis_tready({s_ip_payload_axis_tready, udp_tx_ip_payload_axis_tready}),
-    .s_ip_payload_axis_tlast({s_ip_payload_axis_tlast, udp_tx_ip_payload_axis_tlast}),
+    .s_ip_source_ip({s_ip_source_ip, udp_tx_ip_source_ip, icmp_tx_ip_source_ip}),
+    .s_ip_dest_ip({s_ip_dest_ip, udp_tx_ip_dest_ip, icmp_tx_ip_dest_ip}),
+    .s_ip_payload_axis_tdata({s_ip_payload_axis_tdata, udp_tx_ip_payload_axis_tdata, icmp_tx_ip_payload_axis_tdata}),
+    .s_ip_payload_axis_tkeep({s_ip_payload_axis_tkeep, udp_tx_ip_payload_axis_tkeep, icmp_tx_ip_payload_axis_tkeep}),
+    .s_ip_payload_axis_tvalid({s_ip_payload_axis_tvalid, udp_tx_ip_payload_axis_tvalid, icmp_tx_ip_payload_axis_tvalid}),
+    .s_ip_payload_axis_tready({s_ip_payload_axis_tready, udp_tx_ip_payload_axis_tready, icmp_tx_ip_payload_axis_tready}),
+    .s_ip_payload_axis_tlast({s_ip_payload_axis_tlast, udp_tx_ip_payload_axis_tlast, icmp_tx_ip_payload_axis_tlast}),
     .s_ip_payload_axis_tid(0),
     .s_ip_payload_axis_tdest(0),
-    .s_ip_payload_axis_tuser({s_ip_payload_axis_tuser, udp_tx_ip_payload_axis_tuser}),
+    .s_ip_payload_axis_tuser({s_ip_payload_axis_tuser, udp_tx_ip_payload_axis_tuser, icmp_tx_ip_payload_axis_tuser}),
     // IP frame output
     .m_ip_hdr_valid(ip_tx_ip_hdr_valid),
     .m_ip_hdr_ready(ip_tx_ip_hdr_ready),
@@ -654,6 +735,75 @@ udp_64_inst (
     .rx_error_header_early_termination(udp_rx_error_header_early_termination),
     .rx_error_payload_early_termination(udp_rx_error_payload_early_termination),
     .tx_error_payload_early_termination(udp_tx_error_payload_early_termination)
+);
+
+/*
+ * ICMP interface
+ */
+icmp_64 #(
+    .CHECKSUM_GEN_ENABLE(ICMP_CHECKSUM_GEN_ENABLE),
+    .CHECKSUM_PAYLOAD_FIFO_DEPTH(ICMP_CHECKSUM_PAYLOAD_FIFO_DEPTH),
+    .CHECKSUM_HEADER_FIFO_DEPTH(ICMP_CHECKSUM_HEADER_FIFO_DEPTH)
+)
+icmp_64_inst (
+    .clk(clk),
+    .rst(rst),
+    // IP frame input
+    .s_ip_hdr_valid(icmp_rx_ip_hdr_valid),
+    .s_ip_hdr_ready(icmp_rx_ip_hdr_ready),
+    .s_ip_eth_dest_mac(icmp_rx_ip_eth_dest_mac),
+    .s_ip_eth_src_mac(icmp_rx_ip_eth_src_mac),
+    .s_ip_eth_type(icmp_rx_ip_eth_type),
+    .s_ip_version(icmp_rx_ip_version),
+    .s_ip_ihl(icmp_rx_ip_ihl),
+    .s_ip_dscp(icmp_rx_ip_dscp),
+    .s_ip_ecn(icmp_rx_ip_ecn),
+    .s_ip_length(icmp_rx_ip_length),
+    .s_ip_identification(icmp_rx_ip_identification),
+    .s_ip_flags(icmp_rx_ip_flags),
+    .s_ip_fragment_offset(icmp_rx_ip_fragment_offset),
+    .s_ip_ttl(icmp_rx_ip_ttl),
+    .s_ip_protocol(icmp_rx_ip_protocol),
+    .s_ip_header_checksum(icmp_rx_ip_header_checksum),
+    .s_ip_source_ip(icmp_rx_ip_source_ip),
+    .s_ip_dest_ip(icmp_rx_ip_dest_ip),
+    .s_ip_payload_axis_tdata(icmp_rx_ip_payload_axis_tdata),
+    .s_ip_payload_axis_tkeep(icmp_rx_ip_payload_axis_tkeep),
+    .s_ip_payload_axis_tvalid(icmp_rx_ip_payload_axis_tvalid),
+    .s_ip_payload_axis_tready(icmp_rx_ip_payload_axis_tready),
+    .s_ip_payload_axis_tlast(icmp_rx_ip_payload_axis_tlast),
+    .s_ip_payload_axis_tuser(icmp_rx_ip_payload_axis_tuser),
+    // IP frame output
+    .m_ip_hdr_valid(icmp_tx_ip_hdr_valid),
+    .m_ip_hdr_ready(icmp_tx_ip_hdr_ready),
+    .m_ip_eth_dest_mac(),
+    .m_ip_eth_src_mac(),
+    .m_ip_eth_type(),
+    .m_ip_version(),
+    .m_ip_ihl(),
+    .m_ip_dscp(icmp_tx_ip_dscp),
+    .m_ip_ecn(icmp_tx_ip_ecn),
+    .m_ip_length(icmp_tx_ip_length),
+    .m_ip_identification(),
+    .m_ip_flags(),
+    .m_ip_fragment_offset(),
+    .m_ip_ttl(icmp_tx_ip_ttl),
+    .m_ip_protocol(icmp_tx_ip_protocol),
+    .m_ip_header_checksum(),
+    .m_ip_source_ip(icmp_tx_ip_source_ip),
+    .m_ip_dest_ip(icmp_tx_ip_dest_ip),
+    .m_ip_payload_axis_tdata(icmp_tx_ip_payload_axis_tdata),
+    .m_ip_payload_axis_tkeep(icmp_tx_ip_payload_axis_tkeep),
+    .m_ip_payload_axis_tvalid(icmp_tx_ip_payload_axis_tvalid),
+    .m_ip_payload_axis_tready(icmp_tx_ip_payload_axis_tready),
+    .m_ip_payload_axis_tlast(icmp_tx_ip_payload_axis_tlast),
+    .m_ip_payload_axis_tuser(icmp_tx_ip_payload_axis_tuser),
+    // Status
+    .rx_busy(icmp_rx_busy),
+    .tx_busy(icmp_tx_busy),
+    .rx_error_header_early_termination(icmp_rx_error_header_early_termination),
+    .rx_error_payload_early_termination(icmp_rx_error_payload_early_termination),
+    .tx_error_payload_early_termination(icmp_tx_error_payload_early_termination)
 );
 
 endmodule

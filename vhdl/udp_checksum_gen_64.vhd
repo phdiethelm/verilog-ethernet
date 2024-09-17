@@ -27,6 +27,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use ieee.math_real.all;
 
+use work.vhdl_pkg.all;
 --
 -- UDP checksum calculation module (64 bit datapath)
 --
@@ -142,7 +143,7 @@ end entity;
 
 architecture rtl of udp_checksum_gen_64 is
 
-    constant HEADER_FIFO_ADDR_WIDTH : integer := integer(ceil(log2(real(HEADER_FIFO_DEPTH))));
+    constant HEADER_FIFO_ADDR_WIDTH : integer := clog2(HEADER_FIFO_DEPTH);
 
     type t_state is (STATE_IDLE, STATE_SUM_HEADER, STATE_SUM_PAYLOAD, STATE_FINISH_SUM_1, STATE_FINISH_SUM_2);
 
@@ -294,7 +295,7 @@ begin
             s_axis_tlast      => s_udp_payload_fifo_tlast,
             s_axis_tid        => x"00",
             s_axis_tdest      => x"00",
-            s_axis_tuser(0)      => s_udp_payload_fifo_tuser,
+            s_axis_tuser(0)   => s_udp_payload_fifo_tuser,
 
             -- AXI output
             m_axis_tdata      => m_udp_payload_fifo_tdata,
@@ -304,7 +305,7 @@ begin
             m_axis_tlast      => m_udp_payload_fifo_tlast,
             m_axis_tid        => open,
             m_axis_tdest      => open,
-            m_axis_tuser(0)      => m_udp_payload_fifo_tuser,
+            m_axis_tuser(0)   => m_udp_payload_fifo_tuser,
 
             -- Status
             status_overflow   => open,
@@ -331,8 +332,7 @@ begin
     --
 
     -- full when first MSB different but rest same
-    header_fifo_full          <= '1' when ((header_fifo_wr_ptr_reg(HEADER_FIFO_ADDR_WIDTH) /= header_fifo_rd_ptr_reg(HEADER_FIFO_ADDR_WIDTH)) and
-                        (header_fifo_wr_ptr_reg(HEADER_FIFO_ADDR_WIDTH - 1 downto 0) = header_fifo_rd_ptr_reg(HEADER_FIFO_ADDR_WIDTH - 1 downto 0))) else
+    header_fifo_full          <= '1' when fifo_is_full(header_fifo_wr_ptr_reg, header_fifo_rd_ptr_reg) else
                         '0';
 
     -- empty when pointers match exactly
@@ -518,7 +518,7 @@ begin
                 if s_udp_payload_axis_tready = '1' and s_udp_payload_axis_tvalid = '1' then
                     word_cnt := 1;
                     for i in 1 to 8 loop
-                        if s_udp_payload_axis_tkeep(8-i) = '1' then
+                        if s_udp_payload_axis_tkeep(8 - i) = '1' then
                             word_cnt := i;
                         end if;
                     end loop;
@@ -538,7 +538,7 @@ begin
 
                     for i in 4 to 7 loop
                         if s_udp_payload_axis_tkeep(i) = '1' then
-                            if i = 4 or i = 7 then
+                            if i = 5 or i = 7 then
                                 checksum_temp2_next <= checksum_temp2_next + unsigned(x"00" & s_udp_payload_axis_tdata(i * 8 + 7 downto i * 8));
                             else
                                 checksum_temp2_next <= checksum_temp2_next + unsigned(s_udp_payload_axis_tdata(i * 8 + 7 downto i * 8) & x"00");

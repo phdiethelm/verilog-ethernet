@@ -62,7 +62,7 @@ architecture rtl of arbiter is
     signal grant_next           : std_logic_vector(PORTS - 1 downto 0);
     signal grant_valid_reg      : std_logic := '0';
     signal grant_valid_next     : std_logic;
-    signal grant_encoded_reg    : std_logic_vector(clog2(PORTS) - 1 downto 0);
+    signal grant_encoded_reg    : std_logic_vector(clog2(PORTS) - 1 downto 0) := (others => '0');
     signal grant_encoded_next   : std_logic_vector(clog2(PORTS) - 1 downto 0);
 
     signal request_valid        : std_logic;
@@ -131,18 +131,18 @@ begin
                     grant_next         <= masked_request_mask;
                     grant_encoded_next <= masked_request_index;
                     if ARB_LSB_HIGH_PRIORITY = 1 then
-                        mask_next <= const_1(PORTS) sll to_integer(unsigned(masked_request_index) + 1);
+                        mask_next <= const_1(PORTS) sll (to_integer(unsigned(masked_request_index)) + 1);
                     else
-                        mask_next <= const_1(PORTS) srl to_integer(PORTS - unsigned(masked_request_index));
+                        mask_next <= const_1(PORTS) srl (PORTS - to_integer(unsigned(masked_request_index)));
                     end if;
                 else
                     grant_valid_next   <= '1';
                     grant_next         <= request_mask;
                     grant_encoded_next <= request_index;
                     if ARB_LSB_HIGH_PRIORITY = 1 then
-                        mask_next <= const_1(PORTS) sll to_integer(unsigned(request_index) + 1);
+                        mask_next <= const_1(PORTS) sll (to_integer(unsigned(request_index)) + 1);
                     else
-                        mask_next <= const_1(PORTS) srl to_integer(PORTS - unsigned(request_index));
+                        mask_next <= const_1(PORTS) srl (PORTS - to_integer(unsigned(request_index)));
                     end if;
                 end if;
             else

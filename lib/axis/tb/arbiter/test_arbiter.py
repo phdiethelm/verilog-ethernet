@@ -49,6 +49,7 @@ class TB(object):
     async def reset(self):
         self.dut.rst.setimmediatevalue(0)
         self.dut.acknowledge.setimmediatevalue(0)
+        self.dut.request.setimmediatevalue(0)
         await RisingEdge(self.dut.clk)
         await RisingEdge(self.dut.clk)
         self.dut.rst.value = 1

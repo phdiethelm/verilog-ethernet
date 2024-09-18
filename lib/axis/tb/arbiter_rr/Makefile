@@ -66,7 +66,7 @@ else ifeq ($(SIM), verilator)
 else ifeq ($(SIM), ghdl)
 	GHDL_ARGS += --std=08  -g -v 
 	
-	PLUSARGS += --max-stack-alloc=262144 --backtrace-severity=note --wave=tb.ghw
+	PLUSARGS += --max-stack-alloc=262144 --backtrace-severity=note --wave=tb.ghw  --ieee-asserts=disable-at-0
 
 	SIM_ARGS += $(foreach v,$(filter PARAM_%,$(.VARIABLES)),-g$(subst PARAM_,,$(v))=$($(v)))
 endif

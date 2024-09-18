@@ -34,10 +34,8 @@ MODULE   = test_$(DUT)
 
 ifeq ($(TOPLEVEL_LANG), verilog)
 	VERILOG_SOURCES += ../../rtl/$(DUT).v
-	VERILOG_SOURCES += ../../rtl/arbiter.v
 else
 	VHDL_SOURCES += ../../../../vhdl/vhdl_pkg.vhd
-	VHDL_SOURCES += ../../../../vhdl/arbiter.vhd
 	VHDL_SOURCES += ../../../../vhdl/$(DUT).vhd
 endif
 

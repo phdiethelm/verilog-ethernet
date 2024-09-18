@@ -99,15 +99,9 @@ begin
         end generate;
     end generate;
 
-        process(stage_enc) begin
-            for i in 0 to stage_enc'length-1 loop
-                report "stage_enc(" & to_string(i) & ") = " & to_string(stage_enc(i));
-            end loop;
-        end process;
-
     output_valid <= '1' when unsigned(stage_valid(LEVELS - 1)) /= 0 else
                     '0';
-    output_encoded   <= stage_enc(LEVELS - 1);
+    output_encoded   <= std_logic_vector(resize(unsigned(stage_enc(LEVELS - 1)), output_encoded'length));
     output_unencoded <= std_logic_vector(to_unsigned(1, WIDTH) sll to_integer(unsigned(stage_enc(LEVELS - 1))));
 
 end architecture;

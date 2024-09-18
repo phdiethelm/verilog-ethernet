@@ -314,6 +314,7 @@ if cocotb.SIM_NAME:
 
 tests_dir = os.path.dirname(__file__)
 rtl_dir = os.path.abspath(os.path.join(tests_dir, '..', '..', 'rtl'))
+vhd_dir = os.path.abspath(os.path.join(tests_dir, '..', '..', '..', '..', 'vhdl'))
 
 
 @pytest.mark.parametrize("round_robin", [0, 1])
@@ -326,19 +327,35 @@ def test_axis_arb_mux(request, ports, data_width, round_robin):
     toplevel = wrapper
 
     # generate wrapper
-    wrapper_file = os.path.join(tests_dir, f"{wrapper}.v")
-    if not os.path.exists(wrapper_file):
-        subprocess.Popen(
-            [os.path.join(rtl_dir, f"{dut}_wrap.py"), "-p", f"{ports}"],
-            cwd=tests_dir
-        ).wait()
+    if cocotb.LANGUAGE == "vhdl":
+        wrapper_file = os.path.join(tests_dir, f"{wrapper}.vhd")
+        if not os.path.exists(wrapper_file):
+            subprocess.Popen(
+                [os.path.join(rtl_dir, f"{dut}_wrap.py"), "-X", "-p", f"{ports}"],
+                cwd=tests_dir
+            ).wait()
 
-    verilog_sources = [
-        wrapper_file,
-        os.path.join(rtl_dir, f"{dut}.v"),
-        os.path.join(rtl_dir, "arbiter.v"),
-        os.path.join(rtl_dir, "priority_encoder.v"),
-    ]
+        vhdl_sources = [
+            wrapper_file,
+            os.path.join(vhd_dir, f"{dut}.vhd"),
+            os.path.join(vhd_dir, "arbiter.vhd"),
+            os.path.join(vhd_dir, "priority_encoder.vhd"),
+        ]
+
+    if cocotb.LANGUAGE == "verilog":
+        wrapper_file = os.path.join(tests_dir, f"{wrapper}.v")
+        if not os.path.exists(wrapper_file):
+            subprocess.Popen(
+                [os.path.join(rtl_dir, f"{dut}_wrap.py"), "-p", f"{ports}"],
+                cwd=tests_dir
+            ).wait()
+
+        verilog_sources = [
+            wrapper_file,
+            os.path.join(rtl_dir, f"{dut}.v"),
+            os.path.join(rtl_dir, "arbiter.v"),
+            os.path.join(rtl_dir, "priority_encoder.v"),
+        ]
 
     parameters = {}
 
@@ -367,6 +384,7 @@ def test_axis_arb_mux(request, ports, data_width, round_robin):
     cocotb_test.simulator.run(
         python_search=[tests_dir],
         verilog_sources=verilog_sources,
+        vhdl_sources=vhdl_sources,
         toplevel=toplevel,
         module=module,
         parameters=parameters,

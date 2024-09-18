@@ -18,9 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-TOPLEVEL_LANG = verilog
+TOPLEVEL_LANG = vhdl
 
-SIM ?= icarus
+SIM ?= ghdl
 WAVES ?= 0
 
 COCOTB_HDL_TIMEUNIT = 1ns
@@ -32,10 +32,19 @@ DUT      = axis_arb_mux
 WRAPPER  = $(DUT)_wrap_$(PORTS)
 TOPLEVEL = $(WRAPPER)
 MODULE   = test_$(DUT)
-VERILOG_SOURCES += $(WRAPPER).v
-VERILOG_SOURCES += ../../rtl/$(DUT).v
-VERILOG_SOURCES += ../../rtl/arbiter.v
-VERILOG_SOURCES += ../../rtl/priority_encoder.v
+
+ifeq ($(TOPLEVEL_LANG), verilog)
+	VERILOG_SOURCES += $(WRAPPER).v
+	VERILOG_SOURCES += ../../rtl/$(DUT).v
+	VERILOG_SOURCES += ../../rtl/arbiter.v
+	VERILOG_SOURCES += ../../rtl/priority_encoder.v
+else
+	VHDL_SOURCES += ../../../../vhdl/vhdl_pkg.vhd
+	VHDL_SOURCES += ./$(WRAPPER).vhd
+	VHDL_SOURCES += ../../../../vhdl/arbiter.vhd
+	VHDL_SOURCES += ../../../../vhdl/priority_encoder.vhd
+	VHDL_SOURCES += ../../../../vhdl/$(DUT).vhd
+endif
 
 # module parameters
 export PARAM_DATA_WIDTH := 8
@@ -43,7 +52,7 @@ export PARAM_KEEP_ENABLE := $(shell expr $(PARAM_DATA_WIDTH) \> 8 )
 export PARAM_KEEP_WIDTH := $(shell expr \( $(PARAM_DATA_WIDTH) + 7 \) / 8 )
 export PARAM_ID_ENABLE := 1
 export PARAM_S_ID_WIDTH := 8
-export PARAM_M_ID_WIDTH := $(shell python -c "print($(PARAM_S_ID_WIDTH) + ($(PORTS)-1).bit_length())")
+export PARAM_M_ID_WIDTH := $(shell python3 -c "print($(PARAM_S_ID_WIDTH) + ($(PORTS)-1).bit_length())")
 export PARAM_DEST_ENABLE := 1
 export PARAM_DEST_WIDTH := 8
 export PARAM_USER_ENABLE := 1
@@ -70,9 +79,19 @@ else ifeq ($(SIM), verilator)
 	ifeq ($(WAVES), 1)
 		COMPILE_ARGS += --trace-fst
 	endif
+else ifeq ($(SIM), ghdl)
+	GHDL_ARGS += --std=08  -g -v 
+	
+	PLUSARGS += --max-stack-alloc=262144 --backtrace-severity=note --wave=tb.ghw
+
+	SIM_ARGS += $(foreach v,$(filter PARAM_%,$(.VARIABLES)),-g$(subst PARAM_,,$(v))=$($(v)))
 endif
 
+
 include $(shell cocotb-config --makefiles)/Makefile.sim
+
+$(WRAPPER).vhd: ../../rtl/$(DUT)_wrap.py
+	$< -p $(PORTS) -X
 
 $(WRAPPER).v: ../../rtl/$(DUT)_wrap.py
 	$< -p $(PORTS)

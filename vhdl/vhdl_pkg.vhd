@@ -22,6 +22,9 @@ package vhdl_pkg is
     -- Create vector with size w and all bits set to '1'
     function const_1(width       : integer) return std_logic_vector;
 
+    -- Create vector with size w and all bits set to v
+    function const_V(width       : integer; v : std_logic) return std_logic_vector;
+
     -- mask data and check result for equality: (data & mask) == check
     function mask_check(data     : std_logic_vector; mask : std_logic_vector; check : std_logic_vector) return boolean;
 
@@ -79,6 +82,12 @@ package body vhdl_pkg is
 
     function const_1(width : integer) return std_logic_vector is
         variable const         : std_logic_vector(width - 1 downto 0) := (others => '1');
+    begin
+        return const;
+    end function;
+
+    function const_V(width : integer; v : std_logic) return std_logic_vector is
+        variable const         : std_logic_vector(width - 1 downto 0) := (others => v);
     begin
         return const;
     end function;

@@ -18,9 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-TOPLEVEL_LANG = verilog
+TOPLEVEL_LANG = vhdl
 
-SIM ?= icarus
+SIM ?= ghdl
 WAVES ?= 0
 
 COCOTB_HDL_TIMEUNIT = 1ns
@@ -29,9 +29,17 @@ COCOTB_HDL_TIMEPRECISION = 1ps
 DUT      = axis_fifo_adapter
 TOPLEVEL = $(DUT)
 MODULE   = test_$(DUT)
-VERILOG_SOURCES += ../../rtl/$(DUT).v
-VERILOG_SOURCES += ../../rtl/axis_fifo.v
-VERILOG_SOURCES += ../../rtl/axis_adapter.v
+
+ifeq ($(TOPLEVEL_LANG), verilog)
+	VERILOG_SOURCES += ../../rtl/$(DUT).v
+	VERILOG_SOURCES += ../../rtl/axis_fifo.v
+	VERILOG_SOURCES += ../../rtl/axis_adapter.v
+else
+	VHDL_SOURCES += ../../../../vhdl/vhdl_pkg.vhd
+	VHDL_SOURCES += ../../../../vhdl/axis_fifo.vhd
+	VHDL_SOURCES += ../../../../vhdl/axis_adapter.vhd
+	VHDL_SOURCES += ../../../../vhdl/$(DUT).vhd
+endif
 
 # module parameters
 export PARAM_S_DATA_WIDTH := 8
@@ -76,6 +84,12 @@ else ifeq ($(SIM), verilator)
 	ifeq ($(WAVES), 1)
 		COMPILE_ARGS += --trace-fst
 	endif
+else ifeq ($(SIM), ghdl)
+	GHDL_ARGS += --std=08  -g -v 
+	
+	PLUSARGS += --max-stack-alloc=262144 --backtrace-severity=note --wave=tb.ghw
+
+	SIM_ARGS += $(foreach v,$(filter PARAM_%,$(.VARIABLES)),-g$(subst PARAM_,,$(v))=$($(v)))
 endif
 
 include $(shell cocotb-config --makefiles)/Makefile.sim

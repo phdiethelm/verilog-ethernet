@@ -185,15 +185,14 @@ begin
     s_axis_tready <= not s_axis_tvalid_reg or mask_and_or(S_COUNT, m_axis_tready_int_reg, grant);
 
     process (all) begin
-        report "grant_encoded: " & to_string(unsigned(grant_encoded));
-        current_s_tdata  <= s_axis_tdata_reg(to_integer(unsigned(grant_encoded) + 1) * DATA_WIDTH - 1 downto to_integer(unsigned(grant_encoded)) * DATA_WIDTH);
-        current_s_tkeep  <= s_axis_tkeep_reg(to_integer(unsigned(grant_encoded) + 1) * KEEP_WIDTH - 1 downto to_integer(unsigned(grant_encoded)) * KEEP_WIDTH);
+        current_s_tdata  <= s_axis_tdata_reg((to_integer(unsigned(grant_encoded)) + 1) * DATA_WIDTH - 1 downto to_integer(unsigned(grant_encoded)) * DATA_WIDTH);
+        current_s_tkeep  <= s_axis_tkeep_reg((to_integer(unsigned(grant_encoded)) + 1) * KEEP_WIDTH - 1 downto to_integer(unsigned(grant_encoded)) * KEEP_WIDTH);
         current_s_tvalid <= s_axis_tvalid_reg(to_integer(unsigned(grant_encoded)));
         current_s_tready <= s_axis_tready(to_integer(unsigned(grant_encoded)));
         current_s_tlast  <= s_axis_tlast_reg(to_integer(unsigned(grant_encoded)));
         current_s_tid    <= s_axis_tid_reg(to_integer(unsigned(grant_encoded)) * S_ID_WIDTH + S_ID_WIDTH_INT - 1 downto to_integer(unsigned(grant_encoded)) * S_ID_WIDTH);
-        current_s_tdest  <= s_axis_tdest_reg(to_integer(unsigned(grant_encoded) + 1) * DEST_WIDTH - 1 downto to_integer(unsigned(grant_encoded)) * DEST_WIDTH);
-        current_s_tuser  <= s_axis_tuser_reg(to_integer(unsigned(grant_encoded) + 1) * USER_WIDTH - 1 downto to_integer(unsigned(grant_encoded)) * USER_WIDTH);
+        current_s_tdest  <= s_axis_tdest_reg((to_integer(unsigned(grant_encoded)) + 1) * DEST_WIDTH - 1 downto to_integer(unsigned(grant_encoded)) * DEST_WIDTH);
+        current_s_tuser  <= s_axis_tuser_reg((to_integer(unsigned(grant_encoded)) + 1) * USER_WIDTH - 1 downto to_integer(unsigned(grant_encoded)) * USER_WIDTH);
     end process;
 
     -- arbiter instance
@@ -215,7 +214,7 @@ begin
             grant_encoded => grant_encoded
         );
 
-    request <= (s_axis_tvalid_reg and not grant) or (s_axis_tvalid and grant);
+    request     <= (s_axis_tvalid_reg and not(grant)) or (s_axis_tvalid and grant);
     acknowledge <= grant and s_axis_tvalid_reg and const_V(S_COUNT, m_axis_tready_int_reg) and ternary(LAST_ENABLE, s_axis_tlast_reg, const_1(S_COUNT));
 
     process (all) begin
@@ -224,7 +223,7 @@ begin
         m_axis_tkeep_int  <= current_s_tkeep;
         m_axis_tvalid_int <= current_s_tvalid and m_axis_tready_int_reg and grant_valid;
         m_axis_tlast_int  <= current_s_tlast;
-        m_axis_tid_int    <= current_s_tid;
+        m_axis_tid_int    <= std_logic_vector(resize(unsigned(current_s_tid), m_axis_tid_int'length));
 
         if UPDATE_TID = 1 and S_COUNT > 1 then
             m_axis_tid_int(M_ID_WIDTH - 1 downto M_ID_WIDTH - CL_S_COUNT) <= grant_encoded;

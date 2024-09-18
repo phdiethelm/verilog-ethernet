@@ -182,7 +182,8 @@ begin
         end if;
     end process;
 
-    s_axis_tready <= not s_axis_tvalid_reg or mask_and_or(S_COUNT, m_axis_tready_int_reg, grant);
+    -- assign s_axis_tredy = ~s_axis_tvalid_reg | ({S_COUNT{m_axis_tready_int_reg}} & grant);
+    s_axis_tready <= not(s_axis_tvalid_reg) or (const_v(S_COUNT, m_axis_tready_int_reg) and grant);
 
     process (all) begin
         current_s_tdata  <= s_axis_tdata_reg((to_integer(unsigned(grant_encoded)) + 1) * DATA_WIDTH - 1 downto to_integer(unsigned(grant_encoded)) * DATA_WIDTH);

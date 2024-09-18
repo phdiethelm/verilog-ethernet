@@ -29,12 +29,13 @@ COCOTB_HDL_TIMEPRECISION = 1ps
 DUT      = axis_fifo
 TOPLEVEL = $(DUT)
 MODULE   = test_$(DUT)
-#VERILOG_SOURCES += ../../rtl/$(DUT).v
-VHDL_SOURCES += ../../../../vhdl/vhdl_pkg.vhd
-VHDL_SOURCES += ../../../../vhdl/$(DUT).vhd
 
-GHDL_ARGS += --std=08  -g -v 
-PLUSARGS += --max-stack-alloc=262144 --backtrace-severity=note --wave=tb.ghw
+ifeq ($(TOPLEVEL_LANG), verilog)
+	VERILOG_SOURCES += ../../rtl/$(DUT).v
+else
+	VHDL_SOURCES += ../../../../vhdl/vhdl_pkg.vhd
+	VHDL_SOURCES += ../../../../vhdl/$(DUT).vhd
+endif
 
 # module parameters
 export PARAM_DATA_WIDTH := 8
@@ -60,29 +61,6 @@ export PARAM_MARK_WHEN_FULL := 0
 export PARAM_PAUSE_ENABLE := 1
 export PARAM_FRAME_PAUSE := 1
 
-SIM_ARGS += -gDATA_WIDTH=$(PARAM_DATA_WIDTH)
-SIM_ARGS += -gKEEP_ENABLE=$(PARAM_KEEP_ENABLE)
-SIM_ARGS += -gKEEP_WIDTH=$(PARAM_KEEP_WIDTH)
-SIM_ARGS += -gDEPTH=$(PARAM_DEPTH)
-SIM_ARGS += -gLAST_ENABLE=$(PARAM_LAST_ENABLE)
-SIM_ARGS += -gID_ENABLE=$(PARAM_ID_ENABLE)
-SIM_ARGS += -gID_WIDTH=$(PARAM_ID_WIDTH)
-SIM_ARGS += -gDEST_ENABLE=$(PARAM_DEST_ENABLE)
-SIM_ARGS += -gDEST_WIDTH=$(PARAM_DEST_WIDTH)
-SIM_ARGS += -gUSER_ENABLE=$(PARAM_USER_ENABLE)
-SIM_ARGS += -gUSER_WIDTH=$(PARAM_USER_WIDTH)
-SIM_ARGS += -gRAM_PIPELINE=$(PARAM_RAM_PIPELINE)
-SIM_ARGS += -gOUTPUT_FIFO_ENABLE=$(PARAM_OUTPUT_FIFO_ENABLE)
-SIM_ARGS += -gFRAME_FIFO=$(PARAM_FRAME_FIFO)
-SIM_ARGS += -gUSER_BAD_FRAME_VALUE=$(PARAM_USER_BAD_FRAME_VALUE)
-SIM_ARGS += -gUSER_BAD_FRAME_MASK=$(PARAM_USER_BAD_FRAME_MASK)
-SIM_ARGS += -gDROP_OVERSIZE_FRAME=$(PARAM_DROP_OVERSIZE_FRAME)
-SIM_ARGS += -gDROP_BAD_FRAME=$(PARAM_DROP_BAD_FRAME)
-SIM_ARGS += -gDROP_WHEN_FULL=$(PARAM_DROP_WHEN_FULL)
-SIM_ARGS += -gMARK_WHEN_FULL=$(PARAM_MARK_WHEN_FULL)
-SIM_ARGS += -gPAUSE_ENABLE=$(PARAM_PAUSE_ENABLE)
-SIM_ARGS += -gFRAME_PAUSE=$(PARAM_FRAME_PAUSE)
-
 ifeq ($(SIM), icarus)
 	PLUSARGS += -fst
 
@@ -100,6 +78,12 @@ else ifeq ($(SIM), verilator)
 	ifeq ($(WAVES), 1)
 		COMPILE_ARGS += --trace-fst
 	endif
+else ifeq ($(SIM), ghdl)
+	GHDL_ARGS += --std=08  -g -v 
+	
+	PLUSARGS += --max-stack-alloc=262144 --backtrace-severity=note --wave=tb.ghw
+
+	SIM_ARGS += $(foreach v,$(filter PARAM_%,$(.VARIABLES)),-g$(subst PARAM_,,$(v))=$($(v)))
 endif
 
 include $(shell cocotb-config --makefiles)/Makefile.sim

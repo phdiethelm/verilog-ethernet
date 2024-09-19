@@ -169,7 +169,6 @@ architecture rtl of axis_fifo is
     attribute shreg_extract of m_axis_pipe_reg : signal is "no";
 
     signal m_axis_tvalid_pipe_reg              : std_logic_vector(RAM_PIPELINE + 1 - 1 downto 0);
-    signal m_axis_tvalid_pipe_reg_u            : unsigned(RAM_PIPELINE + 1 - 1 downto 0);
 
     signal full                                : std_logic;
     signal empty                               : std_logic;
@@ -508,7 +507,8 @@ begin
             end if;
 
             for j in RAM_PIPELINE + 1 - 1 downto 1 loop
-                if m_axis_tready_pipe = '1' or m_axis_tvalid_pipe_reg_u(RAM_PIPELINE + 1 - 1 downto j) > 0 then
+                -- if (m_axis_tready_pipe || ((~m_axis_tvalid_pipe_reg) >> j)) begin
+                if m_axis_tready_pipe = '1' or (unsigned(not(m_axis_tvalid_pipe_reg)) srl j) > 0 then
                     -- output ready or bubble in pipeline; transfer down pipeline
                     m_axis_tvalid_pipe_reg(j)     <= m_axis_tvalid_pipe_reg(j - 1);
                     m_axis_pipe_reg(j)            <= m_axis_pipe_reg(j - 1);
@@ -516,7 +516,8 @@ begin
                 end if;
             end loop;
 
-            if m_axis_tready_pipe = '1' and m_axis_tvalid_pipe_reg_u /= 0 then
+            -- if (m_axis_tready_pipe || ~m_axis_tvalid_pipe_reg) begin
+            if m_axis_tready_pipe = '1' or unsigned(not(m_axis_tvalid_pipe_reg)) > 0  then
                 -- output ready or bubble in pipeline; read new data from FIFO
                 m_axis_tvalid_pipe_reg(0) <= '0';
                 m_axis_pipe_reg(0)        <= mem(to_integer(rd_ptr_reg(ADDR_WIDTH - 1 downto 0)));
@@ -528,8 +529,6 @@ begin
             end if;
         end if;
     end process;
-
-    m_axis_tvalid_pipe_reg_u <= not(unsigned(m_axis_tvalid_pipe_reg));
 
     no_fifo : if OUTPUT_FIFO_ENABLE = 0 generate
         pipe_ready         <= '1';

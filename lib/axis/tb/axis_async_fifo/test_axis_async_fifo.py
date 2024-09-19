@@ -663,6 +663,7 @@ if cocotb.SIM_NAME:
 
 tests_dir = os.path.dirname(__file__)
 rtl_dir = os.path.abspath(os.path.join(tests_dir, '..', '..', 'rtl'))
+vhd_dir = os.path.abspath(os.path.join(tests_dir, '..', '..', '..', '..', 'vhdl'))
 
 
 @pytest.mark.parametrize(("s_clk", "m_clk"), [(10, 10), (10, 11), (11, 10)])
@@ -681,9 +682,19 @@ def test_axis_async_fifo(request, data_width, ram_pipeline, output_fifo,
     module = os.path.splitext(os.path.basename(__file__))[0]
     toplevel = dut
 
-    verilog_sources = [
-        os.path.join(rtl_dir, f"{dut}.v"),
-    ]
+    vhdl_sources = None
+    verilog_sources = None
+
+    if cocotb.LANGUAGE == "vhdl":
+        vhdl_sources = [
+            os.path.join(vhd_dir, "vhdl_pkg.vhd"),
+            os.path.join(vhd_dir, f"{dut}.vhd"),
+        ]
+
+    if cocotb.LANGUAGE == "verilog":
+        verilog_sources = [
+            os.path.join(rtl_dir, f"{dut}.v"),
+        ]
 
     parameters = {}
 
@@ -720,6 +731,7 @@ def test_axis_async_fifo(request, data_width, ram_pipeline, output_fifo,
 
     cocotb_test.simulator.run(
         python_search=[tests_dir],
+        vhdl_sources=vhdl_sources,
         verilog_sources=verilog_sources,
         toplevel=toplevel,
         module=module,

@@ -3,4 +3,7 @@
 *.pyc
 *.vvp
 *.kate-swp
-
+results.xml
+work-obj08.cf
+*.ghw
+cmds.f

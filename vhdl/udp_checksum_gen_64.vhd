@@ -340,7 +340,7 @@ begin
                          '0';
 
     -- control signals
-    header_fifo_ready    <= not(header_fifo_full);
+    header_fifo_ready    <= not header_fifo_full;
 
     m_udp_hdr_valid      <= m_udp_hdr_valid_reg;
 
@@ -381,11 +381,13 @@ begin
         end if;
     end process;
 
-    process (clk, rst) begin
-        if rst = '1' then
-            header_fifo_wr_ptr_reg <= (others => '0');
-        elsif rising_edge(clk) then
-            header_fifo_wr_ptr_reg <= header_fifo_wr_ptr_next;
+    process (clk) begin
+        if rising_edge(clk) then
+            if rst = '1' then
+                header_fifo_wr_ptr_reg <= (others => '0');
+            else
+                header_fifo_wr_ptr_reg <= header_fifo_wr_ptr_next;
+            end if;
 
             if header_fifo_write = '1' then
                 mem(to_integer(header_fifo_wr_ptr_reg(HEADER_FIFO_ADDR_WIDTH - 1 downto 0))).eth_dest_mac       <= eth_dest_mac_reg;
@@ -432,13 +434,15 @@ begin
         end if;
     end process;
 
-    process (clk, rst) begin
-        if rst = '1' then
-            header_fifo_rd_ptr_reg <= (others => '0');
-            m_udp_hdr_valid_reg    <= '0';
-        elsif rising_edge(clk) then
-            header_fifo_rd_ptr_reg <= header_fifo_rd_ptr_next;
-            m_udp_hdr_valid_reg    <= m_udp_hdr_valid_next;
+    process (clk) begin
+        if rising_edge(clk) then
+            if rst = '1' then
+                header_fifo_rd_ptr_reg <= (others => '0');
+                m_udp_hdr_valid_reg    <= '0';
+            else
+                header_fifo_rd_ptr_reg <= header_fifo_rd_ptr_next;
+                m_udp_hdr_valid_reg    <= m_udp_hdr_valid_next;
+            end if;
 
             if header_fifo_read = '1' then
                 m_eth_dest_mac_reg       <= mem(to_integer(header_fifo_rd_ptr_reg(HEADER_FIFO_ADDR_WIDTH - 1 downto 0))).eth_dest_mac;
@@ -574,23 +578,25 @@ begin
         end case;
     end process;
 
-    process (rst, clk) begin
-        if rst = '1' then
-            state_reg                     <= STATE_IDLE;
-            s_udp_hdr_ready_reg           <= '0';
-            s_udp_payload_axis_tready_reg <= '0';
-            hdr_valid_reg                 <= '0';
-            busy_reg                      <= '0';
-        elsif rising_edge(clk) then
-            state_reg                     <= state_next;
+    process (clk) begin
+        if rising_edge(clk) then
+            if rst = '1' then
+                state_reg                     <= STATE_IDLE;
+                s_udp_hdr_ready_reg           <= '0';
+                s_udp_payload_axis_tready_reg <= '0';
+                hdr_valid_reg                 <= '0';
+                busy_reg                      <= '0';
+            else
+                state_reg                     <= state_next;
 
-            s_udp_hdr_ready_reg           <= s_udp_hdr_ready_next;
-            s_udp_payload_axis_tready_reg <= s_udp_payload_axis_tready_next;
+                s_udp_hdr_ready_reg           <= s_udp_hdr_ready_next;
+                s_udp_payload_axis_tready_reg <= s_udp_payload_axis_tready_next;
 
-            hdr_valid_reg                 <= hdr_valid_next;
+                hdr_valid_reg                 <= hdr_valid_next;
 
-            busy_reg                      <= '1' when state_next /= STATE_IDLE else
-                        '0';
+                busy_reg                      <= '1' when state_next /= STATE_IDLE else
+                            '0';
+            end if;
 
             frame_ptr_reg      <= frame_ptr_next;
             checksum_reg       <= checksum_next;

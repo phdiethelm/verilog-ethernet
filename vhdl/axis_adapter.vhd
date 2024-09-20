@@ -173,13 +173,9 @@ begin
         m_axis_tdest   <= ternary(DEST_ENABLE, m_axis_tdest_reg, const_0(DEST_WIDTH));
         m_axis_tuser   <= ternary(USER_ENABLE, m_axis_tuser_reg, const_0(USER_WIDTH));
 
-        process (clk, rst) begin
+        process (clk) begin
 
-            if rst = '1' then
-                seg_reg           <= 0;
-                s_axis_tvalid_reg <= '0';
-                m_axis_tvalid_reg <= '0';
-            elsif rising_edge(clk) then
+            if rising_edge(clk) then
 
                 m_axis_tvalid_reg <= m_axis_tvalid_reg and not m_axis_tready;
 
@@ -227,6 +223,12 @@ begin
                     s_axis_tdest_reg  <= s_axis_tdest;
                     s_axis_tuser_reg  <= s_axis_tuser;
                 end if;
+
+                if rst = '1' then
+                    seg_reg           <= 0;
+                    s_axis_tvalid_reg <= '0';
+                    m_axis_tvalid_reg <= '0';
+                end if;
             end if;
         end process;
     end generate;
@@ -250,11 +252,8 @@ begin
         m_axis_tdest   <= ternary(DEST_ENABLE, m_axis_tdest_reg, const_0(DEST_WIDTH));
         m_axis_tuser   <= ternary(USER_ENABLE, m_axis_tuser_reg, const_0(USER_WIDTH));
 
-        process (rst, clk) begin
-            if rst = '1' then
-                s_axis_tvalid_reg <= '0';
-                m_axis_tvalid_reg <= '0';
-            elsif rising_edge(clk) then
+        process (clk) begin
+            if rising_edge(clk) then
                 m_axis_tvalid_reg <= m_axis_tvalid_reg and not m_axis_tready;
 
                 if m_axis_tvalid_reg = '0' or m_axis_tready = '1' then
@@ -305,6 +304,11 @@ begin
                     s_axis_tid_reg    <= s_axis_tid;
                     s_axis_tdest_reg  <= s_axis_tdest;
                     s_axis_tuser_reg  <= s_axis_tuser;
+                end if;
+
+                if rst = '1' then
+                    s_axis_tvalid_reg <= '0';
+                    m_axis_tvalid_reg <= '0';
                 end if;
             end if;
         end process;

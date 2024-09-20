@@ -666,29 +666,24 @@ begin
     end process;
 
     -- pointer synchronization
-    process (s_clk, s_rst) begin
-        if s_rst = '1' then
-            rd_ptr_gray_sync1_reg       <= (others => '0');
-            rd_ptr_gray_sync2_reg       <= (others => '0');
-            wr_ptr_update_ack_sync1_reg <= '0';
-            wr_ptr_update_ack_sync2_reg <= '0';
-        elsif rising_edge(s_clk) then
+    process (s_clk) begin
+        if rising_edge(s_clk) then
             rd_ptr_gray_sync1_reg       <= rd_ptr_gray_reg;
             rd_ptr_gray_sync2_reg       <= rd_ptr_gray_sync1_reg;
             wr_ptr_update_ack_sync1_reg <= wr_ptr_update_sync3_reg;
             wr_ptr_update_ack_sync2_reg <= wr_ptr_update_ack_sync1_reg;
+
+            if s_rst = '1' then
+                rd_ptr_gray_sync1_reg       <= (others => '0');
+                rd_ptr_gray_sync2_reg       <= (others => '0');
+                wr_ptr_update_ack_sync1_reg <= '0';
+                wr_ptr_update_ack_sync2_reg <= '0';
+            end if;
         end if;
     end process;
 
-    process (m_clk, m_rst) begin
-        if m_rst = '1' then
-            wr_ptr_gray_sync1_reg   <= (others => '0');
-            wr_ptr_gray_sync2_reg   <= (others => '0');
-            wr_ptr_commit_sync_reg  <= (others => '0');
-            wr_ptr_update_sync1_reg <= '0';
-            wr_ptr_update_sync2_reg <= '0';
-            wr_ptr_update_sync3_reg <= '0';
-        elsif rising_edge(m_clk) then
+    process (m_clk) begin
+        if rising_edge(m_clk) then
             wr_ptr_gray_sync1_reg <= wr_ptr_gray_reg;
             wr_ptr_gray_sync2_reg <= wr_ptr_gray_sync1_reg;
 
@@ -703,34 +698,35 @@ begin
             if FRAME_FIFO /= 0 and m_rst_sync3_reg = '1' then
                 wr_ptr_gray_sync1_reg <= (others => '0');
             end if;
+
+            if m_rst = '1' then
+                wr_ptr_gray_sync1_reg   <= (others => '0');
+                wr_ptr_gray_sync2_reg   <= (others => '0');
+                wr_ptr_commit_sync_reg  <= (others => '0');
+                wr_ptr_update_sync1_reg <= '0';
+                wr_ptr_update_sync2_reg <= '0';
+                wr_ptr_update_sync3_reg <= '0';
+            end if;
         end if;
     end process;
 
     -- status synchronization
-    process (s_clk, s_rst) begin
-        if s_rst = '1' then
-            overflow_sync1_reg   <= '0';
-            bad_frame_sync1_reg  <= '0';
-            good_frame_sync1_reg <= '0';
-        elsif rising_edge(s_clk) then
+    process (s_clk) begin
+        if rising_edge(s_clk) then
             overflow_sync1_reg   <= overflow_sync1_reg xor overflow_reg;
             bad_frame_sync1_reg  <= bad_frame_sync1_reg xor bad_frame_reg;
             good_frame_sync1_reg <= good_frame_sync1_reg xor good_frame_reg;
+
+            if s_rst = '1' then
+                overflow_sync1_reg   <= '0';
+                bad_frame_sync1_reg  <= '0';
+                good_frame_sync1_reg <= '0';
+            end if;
         end if;
     end process;
 
-    process (m_clk, m_rst) begin
-        if m_rst = '1' then
-            overflow_sync2_reg   <= '0';
-            overflow_sync3_reg   <= '0';
-            overflow_sync4_reg   <= '0';
-            bad_frame_sync2_reg  <= '0';
-            bad_frame_sync3_reg  <= '0';
-            bad_frame_sync4_reg  <= '0';
-            good_frame_sync2_reg <= '0';
-            good_frame_sync3_reg <= '0';
-            good_frame_sync4_reg <= '0';
-        elsif rising_edge(m_clk) then
+    process (m_clk) begin
+        if rising_edge(m_clk) then
             overflow_sync2_reg   <= overflow_sync1_reg;
             overflow_sync3_reg   <= overflow_sync2_reg;
             overflow_sync4_reg   <= overflow_sync3_reg;
@@ -740,21 +736,26 @@ begin
             good_frame_sync2_reg <= good_frame_sync1_reg;
             good_frame_sync3_reg <= good_frame_sync2_reg;
             good_frame_sync4_reg <= good_frame_sync3_reg;
+
+            if m_rst = '1' then
+                overflow_sync2_reg   <= '0';
+                overflow_sync3_reg   <= '0';
+                overflow_sync4_reg   <= '0';
+                bad_frame_sync2_reg  <= '0';
+                bad_frame_sync3_reg  <= '0';
+                bad_frame_sync4_reg  <= '0';
+                good_frame_sync2_reg <= '0';
+                good_frame_sync3_reg <= '0';
+                good_frame_sync4_reg <= '0';
+            end if;
         end if;
     end process;
 
     -- Read logic
-    process (m_clk, m_rst) is
+    process (m_clk) is
         variable rd_ptr_temp : unsigned(ADDR_WIDTH downto 0);
     begin
-        if m_rst = '1' then
-            rd_ptr_reg             <= (others => '0');
-            rd_ptr_gray_reg        <= (others => '0');
-            m_axis_tvalid_pipe_reg <= (others => '0');
-            m_frame_reg            <= '0';
-            m_drop_frame_reg       <= '0';
-            m_terminate_frame_reg  <= '0';
-        elsif rising_edge(m_clk) then
+        if rising_edge(m_clk) then
 
             if m_axis_tready_pipe = '1'then
                 -- output ready; invalidate stage
@@ -820,6 +821,15 @@ begin
                 rd_ptr_reg      <= (others => '0');
                 rd_ptr_gray_reg <= (others => '0');
             end if;
+
+            if m_rst = '1' then
+                rd_ptr_reg             <= (others => '0');
+                rd_ptr_gray_reg        <= (others => '0');
+                m_axis_tvalid_pipe_reg <= (others => '0');
+                m_frame_reg            <= '0';
+                m_drop_frame_reg       <= '0';
+                m_terminate_frame_reg  <= '0';
+            end if;
         end if;
     end process;
 
@@ -866,12 +876,8 @@ begin
         m_axis_tdest_out   <= ternary(DEST_ENABLE, m_axis_tdest_reg, const_0(DEST_WIDTH));
         m_axis_tuser_out   <= ternary(USER_ENABLE, m_axis_tuser_reg, const_0(USER_WIDTH));
 
-        process (m_clk, m_rst) begin
-            if m_rst = '1' then
-                out_fifo_wr_ptr_reg <= (others => '0');
-                out_fifo_rd_ptr_reg <= (others => '0');
-                m_axis_tvalid_reg   <= '0';
-            elsif rising_edge(m_clk) then
+        process (m_clk) begin
+            if rising_edge(m_clk) then
                 m_axis_tvalid_reg      <= m_axis_tvalid_reg and not m_axis_tready_out;
 
                 out_fifo_half_full_reg <= '1' when (out_fifo_wr_ptr_reg - out_fifo_rd_ptr_reg) >= 2 ** (OUTPUT_FIFO_ADDR_WIDTH - 1) else
@@ -896,6 +902,12 @@ begin
                     m_axis_tdest_reg    <= out_fifo(to_integer(out_fifo_rd_ptr_reg(OUTPUT_FIFO_ADDR_WIDTH - 1 downto 0))).tdest;
                     m_axis_tuser_reg    <= out_fifo(to_integer(out_fifo_rd_ptr_reg(OUTPUT_FIFO_ADDR_WIDTH - 1 downto 0))).tuser;
                     out_fifo_rd_ptr_reg <= out_fifo_rd_ptr_reg + 1;
+                end if;
+
+                if m_rst = '1' then
+                    out_fifo_wr_ptr_reg <= (others => '0');
+                    out_fifo_rd_ptr_reg <= (others => '0');
+                    m_axis_tvalid_reg   <= '0';
                 end if;
             end if;
         end process;
@@ -934,12 +946,9 @@ begin
         s_pause_ack       <= s_pause_ack_sync3_reg;
         m_pause_ack       <= pause_reg;
 
-        process (m_clk, m_rst) begin
-            if m_rst = '1'then
-                pause_frame_reg <= '0';
-                pause_reg       <= '0';
-            elsif rising_edge(m_clk) then
-                if FRAME_PAUSE = 1 then
+        process (m_clk) begin
+            if rising_edge(m_clk) then
+                if FRAME_PAUSE /= 0 then
                     if pause_reg = '1' then
                         -- paused; update pause status
                         pause_reg <= m_pause_req or s_pause_req_sync3_reg;
@@ -957,6 +966,11 @@ begin
                     end if;
                 else
                     pause_reg <= m_pause_req or s_pause_req_sync3_reg;
+                end if;
+
+                if m_rst = '1'then
+                    pause_frame_reg <= '0';
+                    pause_reg       <= '0';
                 end if;
             end if;
         end process;

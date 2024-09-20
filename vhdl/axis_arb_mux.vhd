@@ -234,12 +234,9 @@ begin
         m_axis_tuser_int <= current_s_tuser;
     end process;
 
-    process (rst, clk) begin
-        if rst = '1' then
-            s_axis_tvalid_reg <= (others => '0');
-        elsif rising_edge(clk) then
-
-            -- register inputs
+    process (clk) begin
+        -- register inputs
+        if rising_edge(clk) then
             for i in 0 to S_COUNT - 1 loop
                 if s_axis_tready(i) = '1' then
                     s_axis_tdata_reg((i + 1) * DATA_WIDTH - 1 downto i * DATA_WIDTH)   <= s_axis_tdata((i + 1) * DATA_WIDTH - 1 downto i * DATA_WIDTH);
@@ -251,6 +248,10 @@ begin
                     s_axis_tuser_reg((i + 1) * USER_WIDTH - 1 downto i * USER_WIDTH)   <= s_axis_tuser((i + 1) * USER_WIDTH - 1 downto i * USER_WIDTH);
                 end if;
             end loop;
+
+            if rst = '1' then
+                s_axis_tvalid_reg <= (others => '0');
+            end if;
         end if;
     end process;
 
@@ -294,12 +295,8 @@ begin
         end if;
     end process;
 
-    process (rst, clk) begin
-        if rst = '1' then
-            m_axis_tvalid_reg      <= '0';
-            m_axis_tready_int_reg  <= '0';
-            temp_m_axis_tvalid_reg <= '0';
-        elsif rising_edge(clk) then
+    process (clk) begin
+        if rising_edge(clk) then
             m_axis_tvalid_reg      <= m_axis_tvalid_next;
             m_axis_tready_int_reg  <= m_axis_tready_int_early;
             temp_m_axis_tvalid_reg <= temp_m_axis_tvalid_next;
@@ -328,6 +325,12 @@ begin
                 temp_m_axis_tid_reg   <= m_axis_tid_int;
                 temp_m_axis_tdest_reg <= m_axis_tdest_int;
                 temp_m_axis_tuser_reg <= m_axis_tuser_int;
+            end if;
+
+            if rst = '1' then
+                m_axis_tvalid_reg      <= '0';
+                m_axis_tready_int_reg  <= '0';
+                temp_m_axis_tvalid_reg <= '0';
             end if;
         end if;
     end process;

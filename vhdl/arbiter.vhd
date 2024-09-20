@@ -153,17 +153,19 @@ begin
         end if;
     end process;
 
-    process (clk, rst) begin
-        if rst = '1' then
-            grant_reg         <= (others => '0');
-            grant_valid_reg   <= '0';
-            grant_encoded_reg <= (others => '0');
-            mask_reg          <= (others => '0');
-        elsif rising_edge(clk) then
+    process (clk) begin
+        if rising_edge(clk) then
             grant_reg         <= grant_next;
             grant_valid_reg   <= grant_valid_next;
             grant_encoded_reg <= grant_encoded_next;
             mask_reg          <= mask_next;
+
+            if rst = '1' then
+                grant_reg         <= (others => '0');
+                grant_valid_reg   <= '0';
+                grant_encoded_reg <= (others => '0');
+                mask_reg          <= (others => '0');
+            end if;
         end if;
     end process;
 

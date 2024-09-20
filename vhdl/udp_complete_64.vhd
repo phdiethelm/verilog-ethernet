@@ -298,25 +298,27 @@ begin
     -- 
     s_select_udp <= '1' when ip_rx_ip_protocol = x"11" else
                     '0';
-    s_select_ip      <= not(s_select_udp);
+    s_select_ip      <= not s_select_udp;
 
     s_select_udp_reg <= '0';
     s_select_ip_reg  <= '0';
 
-    process (rst, clk) begin
-        if (rst) then
-            s_select_udp_reg <= '0';
-            s_select_ip_reg  <= '0';
-        elsif rising_edge(clk) then
-            if ip_rx_ip_payload_axis_tvalid = '1' then
-                if (s_select_udp_reg = '0' and s_select_ip_reg = '0') or
-                    (ip_rx_ip_payload_axis_tvalid = '1' and ip_rx_ip_payload_axis_tready = '1' and ip_rx_ip_payload_axis_tlast = '1') then
-                    s_select_udp_reg <= s_select_udp;
-                    s_select_ip_reg  <= s_select_ip;
-                end if;
-            else
+    process (clk) begin
+        if rising_edge(clk) then
+            if (rst) then
                 s_select_udp_reg <= '0';
                 s_select_ip_reg  <= '0';
+            else
+                if ip_rx_ip_payload_axis_tvalid = '1' then
+                    if (s_select_udp_reg = '0' and s_select_ip_reg = '0') or
+                        (ip_rx_ip_payload_axis_tvalid = '1' and ip_rx_ip_payload_axis_tready = '1' and ip_rx_ip_payload_axis_tlast = '1') then
+                        s_select_udp_reg <= s_select_udp;
+                        s_select_ip_reg  <= s_select_ip;
+                    end if;
+                else
+                    s_select_udp_reg <= '0';
+                    s_select_ip_reg  <= '0';
+                end if;
             end if;
         end if;
     end process;

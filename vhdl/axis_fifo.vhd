@@ -381,20 +381,8 @@ begin
     status_good_frame   <= good_frame_reg;
 
     -- Write logic
-    P_write : process (clk, rst) begin
-        if rst = '1' then
-            wr_ptr_reg        <= (others => '0');
-            wr_ptr_commit_reg <= (others => '0');
-
-            s_frame_reg       <= '0';
-
-            drop_frame_reg    <= '0';
-            mark_frame_reg    <= '0';
-            send_frame_reg    <= '0';
-            overflow_reg      <= '0';
-            bad_frame_reg     <= '0';
-            good_frame_reg    <= '0';
-        elsif rising_edge(clk) then
+    process (clk) begin
+        if rising_edge(clk) then
 
             overflow_reg   <= '0';
             bad_frame_reg  <= '0';
@@ -484,11 +472,25 @@ begin
                     wr_ptr_commit_reg                                    <= wr_ptr_reg + 1;
                 end if;
             end if;
+
+            if rst = '1' then
+                wr_ptr_reg        <= (others => '0');
+                wr_ptr_commit_reg <= (others => '0');
+
+                s_frame_reg       <= '0';
+
+                drop_frame_reg    <= '0';
+                mark_frame_reg    <= '0';
+                send_frame_reg    <= '0';
+                overflow_reg      <= '0';
+                bad_frame_reg     <= '0';
+                good_frame_reg    <= '0';
+            end if;
         end if;
     end process;
 
     -- Status
-    P_status : process (clk) begin
+    process (clk) begin
         if rising_edge(clk) then
             depth_reg        <= std_logic_vector(wr_ptr_reg - rd_ptr_reg);
             depth_commit_reg <= std_logic_vector(wr_ptr_commit_reg - rd_ptr_reg);
@@ -496,11 +498,8 @@ begin
     end process;
 
     -- Read logic
-    P_read : process (clk, rst) begin
-        if rst = '1' then
-            rd_ptr_reg             <= (others => '0');
-            m_axis_tvalid_pipe_reg <= (others => '0');
-        elsif rising_edge(clk) then
+    process (clk) begin
+        if rising_edge(clk) then
             if m_axis_tready_pipe = '1' then
                 -- output ready; invalidate stage
                 m_axis_tvalid_pipe_reg(RAM_PIPELINE + 1 - 1) <= '0';
@@ -527,6 +526,11 @@ begin
                     rd_ptr_reg                <= rd_ptr_reg + 1;
                 end if;
             end if;
+
+            if rst = '1' then
+                rd_ptr_reg             <= (others => '0');
+                m_axis_tvalid_pipe_reg <= (others => '0');
+            end if;
         end if;
     end process;
 
@@ -552,7 +556,7 @@ begin
         out_fifo_empty <= '1' when out_fifo_wr_ptr_reg = out_fifo_rd_ptr_reg else
                           '0';
 
-        pipe_ready         <= not(out_fifo_half_full_reg);
+        pipe_ready         <= not out_fifo_half_full_reg;
 
         m_axis_tready_pipe <= '1';
 
@@ -564,12 +568,8 @@ begin
         m_axis_tdest_out   <= ternary(DEST_ENABLE, m_axis_tdest_reg, const_0(DEST_WIDTH));
         m_axis_tuser_out   <= ternary(USER_ENABLE, m_axis_tuser_reg, const_0(USER_WIDTH));
 
-        P_out_fifo : process (clk, rst) begin
-            if rst = '1' then
-                out_fifo_wr_ptr_reg <= (others => '0');
-                out_fifo_rd_ptr_reg <= (others => '0');
-                m_axis_tvalid_reg   <= '0';
-            elsif rising_edge(clk) then
+        process (clk) begin
+            if rising_edge(clk) then
                 m_axis_tvalid_reg      <= m_axis_tvalid_reg and not m_axis_tready_out;
 
                 out_fifo_half_full_reg <= '1' when unsigned(out_fifo_wr_ptr_reg - out_fifo_rd_ptr_reg) >= 2 ** (OUTPUT_FIFO_ADDR_WIDTH - 1) else
@@ -595,10 +595,14 @@ begin
                     m_axis_tuser_reg    <= out_fifo(to_integer(out_fifo_rd_ptr_reg(OUTPUT_FIFO_ADDR_WIDTH - 1 downto 0))).tuser;
                     out_fifo_rd_ptr_reg <= out_fifo_rd_ptr_reg + 1;
                 end if;
+
+                if rst = '1' then
+                    out_fifo_wr_ptr_reg <= (others => '0');
+                    out_fifo_rd_ptr_reg <= (others => '0');
+                    m_axis_tvalid_reg   <= '0';
+                end if;
             end if;
-
         end process;
-
     end generate;
 
     pause : if PAUSE_ENABLE /= 0 generate
@@ -616,12 +620,9 @@ begin
 
         pause_ack         <= pause_reg;
 
-        p_pause : process (clk, rst) begin
-            if rst = '1' then
-                pause_frame_reg <= '0';
-                pause_reg       <= '0';
-            elsif rising_edge(clk) then
-                if FRAME_PAUSE = 1 then
+        process (clk) begin
+            if rising_edge(clk) then
+                if FRAME_PAUSE /= 0 then
                     if pause_reg = '1' then
                         -- paused; update pause status
                         pause_reg <= pause_req;
@@ -640,11 +641,17 @@ begin
                 else
                     pause_reg <= pause_req;
                 end if;
+
+                if rst = '1' then
+                    pause_frame_reg <= '0';
+                    pause_reg       <= '0';
+                end if;
             end if;
         end process;
     end generate;
 
     no_pause : if PAUSE_ENABLE = 0 generate
+
         m_axis_tready_out <= m_axis_tready;
         m_axis_tvalid     <= m_axis_tvalid_out;
 

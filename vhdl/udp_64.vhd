@@ -265,7 +265,7 @@ begin
             error_payload_early_termination => rx_error_payload_early_termination
         );
 
-    gc_on : if CHECKSUM_GEN_ENABLE = 1 generate
+    gc_on : if CHECKSUM_GEN_ENABLE /= 0 generate
 
         udp_checksum_gen_64_inst : entity work.udp_checksum_gen_64
             generic map(

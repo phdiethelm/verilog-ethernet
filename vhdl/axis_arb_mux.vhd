@@ -169,7 +169,7 @@ begin
 
     -- check configuration
     P_check : process (all) begin
-        if UPDATE_TID = 1 then
+        if UPDATE_TID /= 0 then
             if ID_ENABLE = 0 then
                 report "Error: UPDATE_TID set requires ID_ENABLE set"
                     severity failure;
@@ -226,7 +226,7 @@ begin
         m_axis_tlast_int  <= current_s_tlast;
         m_axis_tid_int    <= std_logic_vector(resize(unsigned(current_s_tid), m_axis_tid_int'length));
 
-        if UPDATE_TID = 1 and S_COUNT > 1 then
+        if UPDATE_TID /= 0 and S_COUNT > 1 then
             m_axis_tid_int(M_ID_WIDTH - 1 downto M_ID_WIDTH - CL_S_COUNT) <= grant_encoded;
         end if;
 

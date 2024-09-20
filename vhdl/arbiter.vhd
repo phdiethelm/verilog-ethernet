@@ -113,13 +113,13 @@ begin
         mask_next          <= mask_reg;
 
         --  grant_reg & request
-        if ARB_BLOCK = 1 and ARB_BLOCK_ACK = 0 and mask_check(grant_reg, request, request) then
+        if ARB_BLOCK /= 0 and ARB_BLOCK_ACK = 0 and mask_check(grant_reg, request, request)  then
             -- granted request still asserted; hold it
             grant_valid_next   <= grant_valid_reg;
             grant_next         <= grant_reg;
             grant_encoded_next <= grant_encoded_reg;
             -- !(grant_reg & acknowledge) => mask_check(grant_reg, acknowledge, const_0(PORTS))
-        elsif ARB_BLOCK = 1 and ARB_BLOCK_ACK = 1 and grant_valid = '1' and mask_check(grant_reg, acknowledge, const_0(PORTS)) then
+        elsif ARB_BLOCK /= 0 and ARB_BLOCK_ACK /= 0 and grant_valid = '1' and mask_check(grant_reg, acknowledge, const_0(PORTS)) then
             -- granted request not yet acknowledged; hold it
             grant_valid_next   <= grant_valid_reg;
             grant_next         <= grant_reg;

@@ -67,7 +67,7 @@ begin
 
         stage_valid(0)(n) <= or input_padded(n * 2 + 1 downto n * 2);
 
-        g1 : if LSB_HIGH_PRIORITY = 1 generate
+        g1 : if LSB_HIGH_PRIORITY /= 0 generate
             -- bit 0 is highest priority
             stage_enc(0)(n) <= not input_padded(n * 2 + 0);
         end generate;
@@ -83,7 +83,7 @@ begin
         loop_compress : for n in 0 to (W/(2 * 2 ** l)) - 1 generate
             stage_valid(l)(n) <= or stage_valid(l - 1)(n * 2 + 1 downto n * 2);
 
-            g1 : if LSB_HIGH_PRIORITY = 1 generate
+            g1 : if LSB_HIGH_PRIORITY /= 0 generate
                 -- bit 0 is highest priority
                 stage_enc(l)((n + 1) * (l + 1) - 1 downto n * (l + 1)) <= ternary(stage_valid(l - 1)(n * 2 + 0) = '1',
                                                                           '0' & stage_enc(l - 1)((n * 2 + 1) * l - 1 downto (n * 2 + 0) * l),

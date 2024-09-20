@@ -137,7 +137,7 @@ entity axis_fifo is
 end entity;
 
 architecture rtl of axis_fifo is
-    constant ADDR_WIDTH : integer := ternary(KEEP_ENABLE = 1 and KEEP_WIDTH > 1,
+    constant ADDR_WIDTH : integer := ternary(KEEP_ENABLE /= 0 and KEEP_WIDTH > 1,
                                      clog2(DEPTH/KEEP_WIDTH),
                                      clog2(DEPTH));
 
@@ -250,39 +250,39 @@ begin
         constant user_0 : std_logic_vector(USER_WIDTH - 1 downto 0) := (others => '0');
         constant user_1 : std_logic_vector(USER_WIDTH - 1 downto 0) := (others => '0');
     begin
-        if FRAME_FIFO = 1 and LAST_ENABLE = 0 then
+        if FRAME_FIFO /= 0 and LAST_ENABLE = 0 then
             report "Error: FRAME_FIFO set requires LAST_ENABLE set"
                 severity failure;
         end if;
 
-        if DROP_OVERSIZE_FRAME = 1 and FRAME_FIFO = 0 then
+        if DROP_OVERSIZE_FRAME /= 0 and FRAME_FIFO = 0 then
             report "Error: DROP_OVERSIZE_FRAME set requires FRAME_FIFO set"
                 severity failure;
         end if;
 
-        if DROP_BAD_FRAME = 1 and (FRAME_FIFO = 0 or DROP_OVERSIZE_FRAME = 0) then
+        if DROP_BAD_FRAME /= 0 and not(FRAME_FIFO /= 0 and DROP_OVERSIZE_FRAME /= 0) then
             report "Error: DROP_BAD_FRAME set requires FRAME_FIFO and DROP_OVERSIZE_FRAME set"
                 severity failure;
         end if;
 
-        if DROP_WHEN_FULL = 1 and (FRAME_FIFO = 0 or DROP_OVERSIZE_FRAME = 0) then
+        if DROP_WHEN_FULL /= 0 and not(FRAME_FIFO /= 0 and DROP_OVERSIZE_FRAME /= 0) then
             report "Error: DROP_WHEN_FULL set requires FRAME_FIFO and DROP_OVERSIZE_FRAME set"
                 severity failure;
         end if;
 
-        if DROP_BAD_FRAME = 1 or MARK_WHEN_FULL = 1 then
+        if DROP_BAD_FRAME /= 0 or MARK_WHEN_FULL /= 0 then
             if unsigned(USER_BAD_FRAME_MASK and const_1(USER_WIDTH)) = 0 then
                 report "Error: Invalid USER_BAD_FRAME_MASK value"
                     severity failure;
             end if;
         end if;
 
-        if MARK_WHEN_FULL = 1 and FRAME_FIFO = 1 then
+        if MARK_WHEN_FULL /= 0 and FRAME_FIFO /= 0 then
             report "Error: MARK_WHEN_FULL is not compatible with FRAME_FIFO"
                 severity failure;
         end if;
 
-        if MARK_WHEN_FULL = 1 and LAST_ENABLE = 0 then
+        if MARK_WHEN_FULL /= 0 and LAST_ENABLE = 0 then
             report "Error: MARK_WHEN_FULL set requires LAST_ENABLE set"
                 severity failure;
         end if;
@@ -324,29 +324,29 @@ begin
     full_wr <= '1' when wr_ptr_reg(ADDR_WIDTH) /= wr_ptr_commit_reg(ADDR_WIDTH) and wr_ptr_reg(ADDR_WIDTH - 1 downto 0) = wr_ptr_commit_reg(ADDR_WIDTH - 1 downto 0) else
                '0';
 
-    s_axis_tready <= '1' when FRAME_FIFO = 1 and (full = '0' or (full_wr = '1' and DROP_OVERSIZE_FRAME = 1) or DROP_WHEN_FULL = 1) else
-                     '1' when FRAME_FIFO = 0 and (full = '0' or MARK_WHEN_FULL = 1) else
+    s_axis_tready <= '1' when FRAME_FIFO /= 0 and (full = '0' or (full_wr = '1' and DROP_OVERSIZE_FRAME /= 0) or DROP_WHEN_FULL /= 0) else
+                     '1' when FRAME_FIFO = 0 and (full = '0' or MARK_WHEN_FULL /= 0) else
                      '0';
 
     s_axis(DATA_WIDTH - 1 downto 0) <= s_axis_tdata;
 
-    gkeeps : if KEEP_ENABLE = 1 generate
+    gkeeps : if KEEP_ENABLE /= 0 generate
         s_axis(KEEP_OFFSET + KEEP_WIDTH - 1 downto KEEP_OFFSET) <= s_axis_tkeep;
     end generate;
 
-    glasts : if LAST_ENABLE = 1 generate
+    glasts : if LAST_ENABLE /= 0 generate
         s_axis(LAST_OFFSET) <= s_axis_tlast or mark_frame_reg;
     end generate;
 
-    gids : if ID_ENABLE = 1 generate
+    gids : if ID_ENABLE /= 0 generate
         s_axis(ID_OFFSET + ID_WIDTH - 1 downto ID_OFFSET) <= s_axis_tid;
     end generate;
 
-    gdests : if DEST_ENABLE = 1 generate
+    gdests : if DEST_ENABLE /= 0 generate
         s_axis(DEST_OFFSET + DEST_WIDTH - 1 downto DEST_OFFSET) <= s_axis_tdest;
     end generate;
 
-    gusrs : if USER_ENABLE = 1 generate
+    gusrs : if USER_ENABLE /= 0 generate
         s_axis(USER_OFFSET + USER_WIDTH - 1 downto USER_OFFSET) <= ternary(mark_frame_reg = '1', USER_BAD_FRAME_VALUE, s_axis_tuser);
     end generate;
 
@@ -354,28 +354,28 @@ begin
     m_axis_tdata_pipe  <= m_axis(DATA_WIDTH - 1 downto 0);
     m_axis_tvalid_pipe <= m_axis_tvalid_pipe_reg(RAM_PIPELINE + 1 - 1);
 
-    gkeepm : if KEEP_ENABLE = 1 generate
+    gkeepm : if KEEP_ENABLE /= 0 generate
         m_axis_tkeep_pipe <= m_axis(KEEP_OFFSET + KEEP_WIDTH - 1 downto KEEP_OFFSET);
     end generate;
 
-    glastm : if LAST_ENABLE = 1 generate
+    glastm : if LAST_ENABLE /= 0 generate
         m_axis_tlast_pipe <= m_axis(LAST_OFFSET);
     end generate;
 
-    gidm : if ID_ENABLE = 1 generate
+    gidm : if ID_ENABLE /= 0 generate
         m_axis_tid_pipe <= m_axis(ID_OFFSET + ID_WIDTH - 1 downto ID_OFFSET);
     end generate;
 
-    gdestm : if DEST_ENABLE = 1 generate
+    gdestm : if DEST_ENABLE /= 0 generate
         m_axis_tdest_pipe <= m_axis(DEST_OFFSET + DEST_WIDTH - 1 downto DEST_OFFSET);
     end generate;
 
-    gusrm : if USER_ENABLE = 1 generate
+    gusrm : if USER_ENABLE /= 0 generate
         m_axis_tuser_pipe <= m_axis(USER_OFFSET + USER_WIDTH - 1 downto USER_OFFSET);
     end generate;
 
-    status_depth        <= ternary(KEEP_ENABLE = 1 and KEEP_WIDTH > 1, depth_reg & const_0(clog2(KEEP_WIDTH)), depth_reg);
-    status_depth_commit <= ternary(KEEP_ENABLE = 1 and KEEP_WIDTH > 1, depth_commit_reg & const_0(clog2(KEEP_WIDTH)), depth_commit_reg);
+    status_depth        <= ternary(KEEP_ENABLE /= 0 and KEEP_WIDTH > 1, depth_reg & const_0(clog2(KEEP_WIDTH)), depth_reg);
+    status_depth_commit <= ternary(KEEP_ENABLE /= 0 and KEEP_WIDTH > 1, depth_commit_reg & const_0(clog2(KEEP_WIDTH)), depth_commit_reg);
     status_overflow     <= overflow_reg;
     status_bad_frame    <= bad_frame_reg;
     status_good_frame   <= good_frame_reg;
@@ -400,16 +400,16 @@ begin
             bad_frame_reg  <= '0';
             good_frame_reg <= '0';
 
-            if s_axis_tready = '1' and s_axis_tvalid = '1' and LAST_ENABLE = 1 then
+            if s_axis_tready = '1' and s_axis_tvalid = '1' and LAST_ENABLE /= 0 then
                 -- track input frame status
                 s_frame_reg <= not(s_axis_tlast);
             end if;
 
-            if FRAME_FIFO = 1 then
+            if FRAME_FIFO /= 0 then
                 -- frame FIFO mode
                 if s_axis_tready = '1' and s_axis_tvalid = '1' then
                     -- transfer in
-                    if ((full = '1' and DROP_WHEN_FULL = 1) or (full_wr = '1' and DROP_OVERSIZE_FRAME = 1) or drop_frame_reg = '1') then
+                    if ((full = '1' and DROP_WHEN_FULL /= 0) or (full_wr = '1' and DROP_OVERSIZE_FRAME /= 0) or drop_frame_reg = '1') then
                         -- full, packet overflow, or currently dropping frame
                         -- drop frame
                         drop_frame_reg <= '1';
@@ -426,7 +426,7 @@ begin
                         if (s_axis_tlast = '1' or (DROP_OVERSIZE_FRAME = 0 and (full_wr = '1' or send_frame_reg = '1'))) then
                             -- end of frame or send frame
                             send_frame_reg <= not(s_axis_tlast);
-                            if s_axis_tlast = '1' and DROP_BAD_FRAME = 1 and mask_check(s_axis_tuser, USER_BAD_FRAME_MASK, USER_BAD_FRAME_VALUE) then
+                            if s_axis_tlast = '1' and DROP_BAD_FRAME /= 0 and mask_check(s_axis_tuser, USER_BAD_FRAME_MASK, USER_BAD_FRAME_VALUE) then
                                 -- bad packet, reset write pointer
                                 wr_ptr_reg    <= wr_ptr_commit_reg;
                                 bad_frame_reg <= '1';
@@ -446,7 +446,7 @@ begin
             else
                 -- normal FIFO mode
                 if s_axis_tready = '1' and s_axis_tvalid = '1' then
-                    if drop_frame_reg = '1' and MARK_WHEN_FULL = 1 then
+                    if drop_frame_reg = '1' and MARK_WHEN_FULL /= 0 then
                         -- currently dropping frame
                         if s_axis_tlast = '1' then
                             -- end of frame
@@ -461,7 +461,7 @@ begin
                             drop_frame_reg <= '0';
                             overflow_reg   <= '1';
                         end if;
-                    elsif (full = '1' or mark_frame_reg = '1') and MARK_WHEN_FULL = 1 then
+                    elsif (full = '1' or mark_frame_reg = '1') and MARK_WHEN_FULL /= 0 then
                         -- full or marking frame
                         -- drop frame; mark if this isn't the first cycle
                         drop_frame_reg <= '1';
@@ -476,7 +476,7 @@ begin
                         wr_ptr_reg                                           <= wr_ptr_reg + 1;
                         wr_ptr_commit_reg                                    <= wr_ptr_reg + 1;
                     end if;
-                elsif ((full = '0' and drop_frame_reg = '0' and mark_frame_reg = '1') and MARK_WHEN_FULL = 1) then
+                elsif ((full = '0' and drop_frame_reg = '0' and mark_frame_reg = '1') and MARK_WHEN_FULL /= 0) then
                     -- terminate marked frame
                     mark_frame_reg                                       <= '0';
                     mem(to_integer(wr_ptr_reg(ADDR_WIDTH - 1 downto 0))) <= s_axis;
@@ -544,7 +544,7 @@ begin
         m_axis_tuser_out   <= m_axis_tuser_pipe;
     end generate;
 
-    output_fifo : if OUTPUT_FIFO_ENABLE = 1 generate
+    output_fifo : if OUTPUT_FIFO_ENABLE /= 0 generate
 
         -- output datapath logic
         out_fifo_full <= '1' when out_fifo_wr_ptr_reg(OUTPUT_FIFO_ADDR_WIDTH) /= out_fifo_rd_ptr_reg(OUTPUT_FIFO_ADDR_WIDTH) and out_fifo_wr_ptr_reg(OUTPUT_FIFO_ADDR_WIDTH - 1 downto 0) = out_fifo_rd_ptr_reg(OUTPUT_FIFO_ADDR_WIDTH - 1 downto 0) else
@@ -601,7 +601,7 @@ begin
 
     end generate;
 
-    pause : if PAUSE_ENABLE = 1 generate
+    pause : if PAUSE_ENABLE /= 0 generate
 
         -- Pause logic
         m_axis_tready_out <= m_axis_tready and not(pause_reg);

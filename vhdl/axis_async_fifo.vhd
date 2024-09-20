@@ -144,7 +144,7 @@ entity axis_async_fifo is
 end entity;
 
 architecture rtl of axis_async_fifo is
-    constant ADDR_WIDTH             : integer := ternary(KEEP_ENABLE = 1 and KEEP_WIDTH > 1, clog2(DEPTH/KEEP_WIDTH), clog2(DEPTH));
+    constant ADDR_WIDTH             : integer := ternary(KEEP_ENABLE /= 0 and KEEP_WIDTH > 1, clog2(DEPTH/KEEP_WIDTH), clog2(DEPTH));
 
     constant OUTPUT_FIFO_ADDR_WIDTH : integer := ternary(RAM_PIPELINE < 2, 3, clog2(RAM_PIPELINE * 2 + 7));
 
@@ -338,39 +338,39 @@ begin
 
     -- check configuration
     P_check : process (all) begin
-        if FRAME_FIFO = 1 and LAST_ENABLE = 0 then
+        if FRAME_FIFO /= 0 and LAST_ENABLE = 0 then
             report "Error: FRAME_FIFO set requires LAST_ENABLE set"
                 severity failure;
         end if;
 
-        if DROP_OVERSIZE_FRAME = 1 and FRAME_FIFO = 0 then
+        if DROP_OVERSIZE_FRAME /= 0 and FRAME_FIFO = 0 then
             report "Error: DROP_OVERSIZE_FRAME set requires FRAME_FIFO set"
                 severity failure;
         end if;
 
-        if DROP_BAD_FRAME = 1 and not(FRAME_FIFO = 1 and DROP_OVERSIZE_FRAME = 1) then
+        if DROP_BAD_FRAME /= 0 and not(FRAME_FIFO /= 0 and DROP_OVERSIZE_FRAME /= 0) then
             report "Error: DROP_BAD_FRAME set requires FRAME_FIFO and DROP_OVERSIZE_FRAME set"
                 severity failure;
         end if;
 
-        if DROP_WHEN_FULL = 1 and not(FRAME_FIFO = 1 and DROP_OVERSIZE_FRAME = 1) then
+        if DROP_WHEN_FULL /= 0 and not(FRAME_FIFO /= 0 and DROP_OVERSIZE_FRAME /= 0) then
             report "Error: DROP_WHEN_FULL set requires FRAME_FIFO and DROP_OVERSIZE_FRAME set"
                 severity failure;
         end if;
 
-        if (DROP_BAD_FRAME = 1 or MARK_WHEN_FULL = 1) then
+        if (DROP_BAD_FRAME /= 0 or MARK_WHEN_FULL /= 0) then
             if unsigned(USER_BAD_FRAME_MASK and const_1(USER_WIDTH)) = 0 then
                 report "Error: Invalid USER_BAD_FRAME_MASK value"
                     severity failure;
             end if;
         end if;
 
-        if MARK_WHEN_FULL = 1 and FRAME_FIFO = 1 then
+        if MARK_WHEN_FULL /= 0 and FRAME_FIFO /= 0 then
             report "Error: MARK_WHEN_FULL is not compatible with FRAME_FIFO"
                 severity failure;
         end if;
 
-        if MARK_WHEN_FULL = 1 and LAST_ENABLE = 0 then
+        if MARK_WHEN_FULL /= 0 and LAST_ENABLE = 0 then
             report "Error: MARK_WHEN_FULL set requires LAST_ENABLE set"
                 severity failure;
         end if;
@@ -393,27 +393,27 @@ begin
 
     -- control signals
     s_axis_tready <= '1' when ternary(FRAME_FIFO,
-                     (full = '0' or (full_wr = '1' and DROP_OVERSIZE_FRAME = 1) or DROP_WHEN_FULL = 1),
-                     (full = '0' or MARK_WHEN_FULL = 1) and s_rst_sync3_reg = '0') else
+                     (full = '0' or (full_wr = '1' and DROP_OVERSIZE_FRAME /= 0) or DROP_WHEN_FULL /= 0),
+                     (full = '0' or MARK_WHEN_FULL /= 0) and s_rst_sync3_reg = '0') else
                      '0';
 
     s_axis(DATA_WIDTH - 1 downto 0) <= s_axis_tdata;
-    g_keep : if KEEP_ENABLE = 1 generate
+    g_keep : if KEEP_ENABLE /= 0 generate
         s_axis(KEEP_OFFSET + KEEP_WIDTH - 1 downto KEEP_OFFSET) <= s_axis_tkeep;
     end generate;
-    g_last : if LAST_ENABLE = 1 generate
+    g_last : if LAST_ENABLE /= 0 generate
         s_axis(LAST_OFFSET) <= s_axis_tlast or mark_frame_reg;
     end generate;
 
-    g_id : if ID_ENABLE = 1 generate
+    g_id : if ID_ENABLE /= 0 generate
         s_axis(ID_OFFSET + ID_WIDTH - 1 downto ID_OFFSET) <= s_axis_tid;
     end generate;
 
-    g_dest : if DEST_ENABLE = 1 generate
+    g_dest : if DEST_ENABLE /= 0 generate
         s_axis(DEST_OFFSET + DEST_WIDTH - 1 downto DEST_OFFSET) <= s_axis_tdest;
     end generate;
 
-    g_user : if USER_ENABLE = 1 generate
+    g_user : if USER_ENABLE /= 0 generate
         s_axis(USER_OFFSET + USER_WIDTH - 1 downto USER_OFFSET) <= ternary(mark_frame_reg = '1', USER_BAD_FRAME_VALUE, s_axis_tuser);
     end generate;
 
@@ -427,14 +427,14 @@ begin
     m_axis_tdest_pipe     <= ternary(DEST_ENABLE, m_axis(DEST_OFFSET + DEST_WIDTH - 1 downto DEST_OFFSET), const_0(DEST_WIDTH));
     m_axis_tuser_pipe     <= ternary(USER_ENABLE, ternary(m_terminate_frame_reg = '1', USER_BAD_FRAME_VALUE, m_axis(USER_OFFSET + USER_WIDTH - 1 downto USER_OFFSET)), const_0(USER_WIDTH));
 
-    s_status_depth        <= ternary(KEEP_ENABLE = 1 and KEEP_WIDTH > 1, s_depth_reg & const_0(clog2(KEEP_WIDTH)), s_depth_reg);
-    s_status_depth_commit <= ternary(KEEP_ENABLE = 1 and KEEP_WIDTH > 1, s_depth_commit_reg & const_0(clog2(KEEP_WIDTH)), s_depth_commit_reg);
+    s_status_depth        <= ternary(KEEP_ENABLE /= 0 and KEEP_WIDTH > 1, s_depth_reg & const_0(clog2(KEEP_WIDTH)), s_depth_reg);
+    s_status_depth_commit <= ternary(KEEP_ENABLE /= 0 and KEEP_WIDTH > 1, s_depth_commit_reg & const_0(clog2(KEEP_WIDTH)), s_depth_commit_reg);
     s_status_overflow     <= overflow_reg;
     s_status_bad_frame    <= bad_frame_reg;
     s_status_good_frame   <= good_frame_reg;
 
-    m_status_depth        <= ternary(KEEP_ENABLE = 1 and KEEP_WIDTH > 1, m_depth_reg & const_0(clog2(KEEP_WIDTH)), m_depth_reg);
-    m_status_depth_commit <= ternary(KEEP_ENABLE = 1 and KEEP_WIDTH > 1, m_depth_commit_reg & const_0(clog2(KEEP_WIDTH)), m_depth_commit_reg);
+    m_status_depth        <= ternary(KEEP_ENABLE /= 0 and KEEP_WIDTH > 1, m_depth_reg & const_0(clog2(KEEP_WIDTH)), m_depth_reg);
+    m_status_depth_commit <= ternary(KEEP_ENABLE /= 0 and KEEP_WIDTH > 1, m_depth_commit_reg & const_0(clog2(KEEP_WIDTH)), m_depth_commit_reg);
     m_status_overflow     <= overflow_sync3_reg xor overflow_sync4_reg;
     m_status_bad_frame    <= bad_frame_sync3_reg xor bad_frame_sync4_reg;
 
@@ -501,7 +501,7 @@ begin
             bad_frame_reg  <= '0';
             good_frame_reg <= '0';
 
-            if FRAME_FIFO = 1 and wr_ptr_update_valid_reg = '1' then
+            if FRAME_FIFO /= 0 and wr_ptr_update_valid_reg = '1' then
                 -- have updated pointer to sync
                 if wr_ptr_update_reg = wr_ptr_update_ack_sync2_reg then
                     -- no sync in progress; sync update
@@ -511,12 +511,12 @@ begin
                 end if;
             end if;
 
-            if s_axis_tready = '1' and s_axis_tvalid = '1' and LAST_ENABLE = 1 then
+            if s_axis_tready = '1' and s_axis_tvalid = '1' and LAST_ENABLE /= 0 then
                 -- track input frame status
                 s_frame_reg <= not s_axis_tlast;
             end if;
 
-            if s_rst_sync3_reg = '1' and LAST_ENABLE = 1 then
+            if s_rst_sync3_reg = '1' and LAST_ENABLE /= 0 then
                 -- if sink side is reset during transfer, drop partial frame
                 if s_frame_reg = '1' and not(s_axis_tready = '1' and s_axis_tvalid = '1' and s_axis_tlast = '1') then
                     drop_frame_reg <= '1';
@@ -526,11 +526,11 @@ begin
                 end if;
             end if;
 
-            if FRAME_FIFO = 1 then
+            if FRAME_FIFO /= 0 then
                 -- frame FIFO mode
                 if s_axis_tready = '1' and s_axis_tvalid = '1' then
                     -- transfer in
-                    if (full = '1' and DROP_WHEN_FULL = 1) or (full_wr = '1' and DROP_OVERSIZE_FRAME = 1) or drop_frame_reg = '1' then
+                    if (full = '1' and DROP_WHEN_FULL /= 0) or (full_wr = '1' and DROP_OVERSIZE_FRAME /= 0) or drop_frame_reg = '1' then
                         -- full, packet overflow, or currently dropping frame
                         -- drop frame
                         drop_frame_reg <= '1';
@@ -550,7 +550,7 @@ begin
                         if s_axis_tlast = '1' or (DROP_OVERSIZE_FRAME = 0 and (full_wr = '1' or send_frame_reg = '1')) then
                             -- end of frame or send frame
                             send_frame_reg <= not s_axis_tlast;
-                            if s_axis_tlast = '1' and DROP_BAD_FRAME = 1 and mask_check(s_axis_tuser, USER_BAD_FRAME_MASK, USER_BAD_FRAME_VALUE) then
+                            if s_axis_tlast = '1' and DROP_BAD_FRAME /= 0 and mask_check(s_axis_tuser, USER_BAD_FRAME_MASK, USER_BAD_FRAME_VALUE) then
                                 -- bad packet, reset write pointer
                                 wr_ptr_temp := wr_ptr_commit_reg;
                                 wr_ptr_reg      <= wr_ptr_temp;
@@ -577,7 +577,7 @@ begin
                             end if;
                         end if;
                     end if;
-                elsif s_axis_tvalid = '1' and full_wr = '1' and FRAME_FIFO = 1 and DROP_OVERSIZE_FRAME = 0 then
+                elsif s_axis_tvalid = '1' and full_wr = '1' and FRAME_FIFO /= 0 and DROP_OVERSIZE_FRAME = 0 then
                     -- data valid with packet overflow
                     -- update write pointer
                     send_frame_reg <= '1';
@@ -599,11 +599,11 @@ begin
             else
                 -- normal FIFO mode
                 if s_axis_tready = '1' and s_axis_tvalid = '1' then
-                    if drop_frame_reg = '1' and LAST_ENABLE = 1 then
+                    if drop_frame_reg = '1' and LAST_ENABLE /= 0 then
                         -- currently dropping frame
                         if s_axis_tlast = '1' then
                             -- end of frame
-                            if full = '0' and mark_frame_reg = '1' and MARK_WHEN_FULL = 1 then
+                            if full = '0' and mark_frame_reg = '1' and MARK_WHEN_FULL /= 0 then
                                 -- terminate marked frame
                                 mark_frame_reg                                       <= '0';
                                 mem(to_integer(wr_ptr_reg(ADDR_WIDTH - 1 downto 0))) <= s_axis;
@@ -616,7 +616,7 @@ begin
                             drop_frame_reg <= '0';
                             overflow_reg   <= '1';
                         end if;
-                    elsif (full = '1' or mark_frame_reg = '1') and MARK_WHEN_FULL = 1 then
+                    elsif (full = '1' or mark_frame_reg = '1') and MARK_WHEN_FULL /= 0 then
                         -- full or marking frame
                         -- drop frame; mark if this isn't the first cycle
                         drop_frame_reg <= '1';
@@ -633,7 +633,7 @@ begin
                         wr_ptr_commit_reg <= wr_ptr_temp;
                         wr_ptr_gray_reg   <= bin2gray(wr_ptr_temp);
                     end if;
-                elsif (full = '0' and drop_frame_reg = '0' and mark_frame_reg = '1') and MARK_WHEN_FULL = 1 then
+                elsif (full = '0' and drop_frame_reg = '0' and mark_frame_reg = '1') and MARK_WHEN_FULL /= 0 then
                     -- terminate marked frame
                     mark_frame_reg                                       <= '0';
                     mem(to_integer(wr_ptr_reg(ADDR_WIDTH - 1 downto 0))) <= s_axis;
@@ -692,7 +692,7 @@ begin
             wr_ptr_gray_sync1_reg <= wr_ptr_gray_reg;
             wr_ptr_gray_sync2_reg <= wr_ptr_gray_sync1_reg;
 
-            if FRAME_FIFO = 1 and (wr_ptr_update_sync2_reg xor wr_ptr_update_sync3_reg) = '1' then
+            if FRAME_FIFO /= 0 and (wr_ptr_update_sync2_reg xor wr_ptr_update_sync3_reg) = '1' then
                 wr_ptr_commit_sync_reg <= wr_ptr_sync_commit_reg;
             end if;
 
@@ -700,7 +700,7 @@ begin
             wr_ptr_update_sync2_reg <= wr_ptr_update_sync1_reg;
             wr_ptr_update_sync3_reg <= wr_ptr_update_sync2_reg;
 
-            if FRAME_FIFO = 1 and m_rst_sync3_reg = '1' then
+            if FRAME_FIFO /= 0 and m_rst_sync3_reg = '1' then
                 wr_ptr_gray_sync1_reg <= (others => '0');
             end if;
         end if;
@@ -784,7 +784,7 @@ begin
                 end if;
             end if;
 
-            if m_axis_tvalid_pipe = '1' and LAST_ENABLE = 1 then
+            if m_axis_tvalid_pipe = '1' and LAST_ENABLE /= 0 then
                 -- track output frame status
                 if m_axis_tlast_pipe = '1' and m_axis_tready_pipe = '1' then
                     m_frame_reg <= '0';
@@ -793,7 +793,7 @@ begin
                 end if;
             end if;
 
-            if m_drop_frame_reg = '1' and ternary(OUTPUT_FIFO_ENABLE, pipe_ready, m_axis_tready_pipe or not m_axis_tvalid_pipe) = '1' and LAST_ENABLE = 1 then
+            if m_drop_frame_reg = '1' and ternary(OUTPUT_FIFO_ENABLE, pipe_ready, m_axis_tready_pipe or not m_axis_tvalid_pipe) = '1' and LAST_ENABLE /= 0 then
                 -- terminate frame
                 -- (only for frame transfers interrupted by source reset)
                 m_axis_tvalid_pipe_reg(RAM_PIPELINE + 1 - 1) <= '1';
@@ -801,7 +801,7 @@ begin
                 m_drop_frame_reg                             <= '0';
             end if;
 
-            if m_rst_sync3_reg = '1' and LAST_ENABLE = 1 then
+            if m_rst_sync3_reg = '1' and LAST_ENABLE /= 0 then
                 -- if source side is reset during transfer, drop partial frame
 
                 -- empty output pipeline, except for last stage
@@ -832,7 +832,7 @@ begin
         end if;
     end process;
 
-    g_no_output_fifo : if not(OUTPUT_FIFO_ENABLE = 1) generate
+    g_no_output_fifo : if OUTPUT_FIFO_ENABLE = 0 generate
         pipe_ready         <= '1';
 
         m_axis_tready_pipe <= m_axis_tready_out;
@@ -846,7 +846,7 @@ begin
         m_axis_tuser_out   <= m_axis_tuser_pipe;
     end generate;
 
-    g_output_fifo : if OUTPUT_FIFO_ENABLE = 1 generate
+    g_output_fifo : if OUTPUT_FIFO_ENABLE /= 0 generate
 
         -- output datapath logic
         out_fifo_full <= '1' when out_fifo_wr_ptr_reg = (out_fifo_rd_ptr_reg xor unsigned(std_logic_vector'("1" & const_0(OUTPUT_FIFO_ADDR_WIDTH)))) else
@@ -902,7 +902,7 @@ begin
 
     end generate;
 
-    g_pause : if PAUSE_ENABLE = 1 generate
+    g_pause : if PAUSE_ENABLE /= 0 generate
 
         -- Pause logic
         process (s_clk) begin
@@ -963,7 +963,7 @@ begin
 
     end generate;
 
-    g_no_pause : if not(PAUSE_ENABLE = 1) generate
+    g_no_pause : if PAUSE_ENABLE = 0 generate
         m_axis_tready_out <= m_axis_tready;
         m_axis_tvalid     <= m_axis_tvalid_out;
 

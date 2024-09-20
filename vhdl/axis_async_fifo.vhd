@@ -378,7 +378,7 @@ begin
 
     -- full when first TWO MSBs do NOT match, but rest matches
     -- (gray code equivalent of first MSB different but rest same)
-    full <= '1' when wr_ptr_gray_reg = (rd_ptr_gray_sync2_reg xor unsigned(std_logic_vector'("11" & const_0(ADDR_WIDTH - 1)))) else
+    full <= '1' when wr_ptr_gray_reg = unsigned(std_logic_vector(rd_ptr_gray_sync2_reg) xor "11" & const_0(ADDR_WIDTH - 1)) else
             '0';
 
     -- empty when pointers match exactly
@@ -388,7 +388,7 @@ begin
              '0';
 
     -- overflow within packet
-    full_wr <= '1' when wr_ptr_reg = (wr_ptr_commit_reg xor unsigned(std_logic_vector'("1" & const_0(ADDR_WIDTH)))) else
+    full_wr <= '1' when wr_ptr_reg = unsigned(std_logic_vector(wr_ptr_commit_reg) xor "1" & const_0(ADDR_WIDTH)) else
                '0';
 
     -- control signals
@@ -550,7 +550,7 @@ begin
                         if s_axis_tlast = '1' or (DROP_OVERSIZE_FRAME = 0 and (full_wr = '1' or send_frame_reg = '1')) then
                             -- end of frame or send frame
                             send_frame_reg <= not s_axis_tlast;
-                            if s_axis_tlast = '1' and DROP_BAD_FRAME /= 0 and mask_check(s_axis_tuser, USER_BAD_FRAME_MASK, USER_BAD_FRAME_VALUE) then
+                            if s_axis_tlast = '1' and DROP_BAD_FRAME /= 0 and unsigned(USER_BAD_FRAME_MASK and not(s_axis_tuser xor USER_BAD_FRAME_VALUE)) /= 0 then
                                 -- bad packet, reset write pointer
                                 wr_ptr_temp := wr_ptr_commit_reg;
                                 wr_ptr_reg      <= wr_ptr_temp;
@@ -859,7 +859,7 @@ begin
     g_output_fifo : if OUTPUT_FIFO_ENABLE /= 0 generate
 
         -- output datapath logic
-        out_fifo_full <= '1' when out_fifo_wr_ptr_reg = (out_fifo_rd_ptr_reg xor unsigned(std_logic_vector'("1" & const_0(OUTPUT_FIFO_ADDR_WIDTH)))) else
+        out_fifo_full <= '1' when out_fifo_wr_ptr_reg = unsigned(std_logic_vector(out_fifo_rd_ptr_reg) xor "1" & const_0(OUTPUT_FIFO_ADDR_WIDTH)) else
                          '0';
         out_fifo_empty <= '1' when out_fifo_wr_ptr_reg = out_fifo_rd_ptr_reg else
                           '0';

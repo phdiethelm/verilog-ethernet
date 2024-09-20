@@ -313,7 +313,7 @@ begin
     end process;
 
     -- full when first MSB different but rest same
-    full <= '1' when wr_ptr_reg(ADDR_WIDTH) /= rd_ptr_reg(ADDR_WIDTH) and wr_ptr_reg(ADDR_WIDTH - 1 downto 0) = rd_ptr_reg(ADDR_WIDTH - 1 downto 0) else
+    full <= '1' when wr_ptr_reg = unsigned(std_logic_vector(rd_ptr_reg) xor "1" & const_0(ADDR_WIDTH)) else
             '0';
 
     -- empty when pointers match exactly
@@ -321,7 +321,7 @@ begin
              '0';
 
     -- overflow within packet
-    full_wr <= '1' when wr_ptr_reg(ADDR_WIDTH) /= wr_ptr_commit_reg(ADDR_WIDTH) and wr_ptr_reg(ADDR_WIDTH - 1 downto 0) = wr_ptr_commit_reg(ADDR_WIDTH - 1 downto 0) else
+    full_wr <= '1' when wr_ptr_reg = unsigned((std_logic_vector(wr_ptr_commit_reg) xor "1" & const_0(ADDR_WIDTH))) else
                '0';
 
     s_axis_tready <= '1' when FRAME_FIFO /= 0 and (full = '0' or (full_wr = '1' and DROP_OVERSIZE_FRAME /= 0) or DROP_WHEN_FULL /= 0) else
@@ -414,7 +414,7 @@ begin
                         if (s_axis_tlast = '1' or (DROP_OVERSIZE_FRAME = 0 and (full_wr = '1' or send_frame_reg = '1'))) then
                             -- end of frame or send frame
                             send_frame_reg <= not(s_axis_tlast);
-                            if s_axis_tlast = '1' and DROP_BAD_FRAME /= 0 and mask_check(s_axis_tuser, USER_BAD_FRAME_MASK, USER_BAD_FRAME_VALUE) then
+                            if s_axis_tlast = '1' and DROP_BAD_FRAME /= 0 and unsigned(USER_BAD_FRAME_MASK and not(s_axis_tuser xor USER_BAD_FRAME_VALUE)) /= 0 then
                                 -- bad packet, reset write pointer
                                 wr_ptr_reg    <= wr_ptr_commit_reg;
                                 bad_frame_reg <= '1';
@@ -507,7 +507,7 @@ begin
 
             for j in RAM_PIPELINE + 1 - 1 downto 1 loop
                 -- if (m_axis_tready_pipe || ((~m_axis_tvalid_pipe_reg) >> j)) begin
-                if m_axis_tready_pipe = '1' or (unsigned(not(m_axis_tvalid_pipe_reg)) srl j) > 0 then
+                if m_axis_tready_pipe = '1' or (unsigned(not(m_axis_tvalid_pipe_reg)) srl j) /= 0 then
                     -- output ready or bubble in pipeline; transfer down pipeline
                     m_axis_tvalid_pipe_reg(j)     <= m_axis_tvalid_pipe_reg(j - 1);
                     m_axis_pipe_reg(j)            <= m_axis_pipe_reg(j - 1);
@@ -516,7 +516,7 @@ begin
             end loop;
 
             -- if (m_axis_tready_pipe || ~m_axis_tvalid_pipe_reg) begin
-            if m_axis_tready_pipe = '1' or unsigned(not(m_axis_tvalid_pipe_reg)) > 0  then
+            if m_axis_tready_pipe = '1' or unsigned(not(m_axis_tvalid_pipe_reg)) /= 0  then
                 -- output ready or bubble in pipeline; read new data from FIFO
                 m_axis_tvalid_pipe_reg(0) <= '0';
                 m_axis_pipe_reg(0)        <= mem(to_integer(rd_ptr_reg(ADDR_WIDTH - 1 downto 0)));
@@ -551,7 +551,7 @@ begin
     output_fifo : if OUTPUT_FIFO_ENABLE /= 0 generate
 
         -- output datapath logic
-        out_fifo_full <= '1' when out_fifo_wr_ptr_reg(OUTPUT_FIFO_ADDR_WIDTH) /= out_fifo_rd_ptr_reg(OUTPUT_FIFO_ADDR_WIDTH) and out_fifo_wr_ptr_reg(OUTPUT_FIFO_ADDR_WIDTH - 1 downto 0) = out_fifo_rd_ptr_reg(OUTPUT_FIFO_ADDR_WIDTH - 1 downto 0) else
+        out_fifo_full <= '1' when out_fifo_wr_ptr_reg = unsigned(std_logic_vector(out_fifo_rd_ptr_reg) xor "1" & const_0(OUTPUT_FIFO_ADDR_WIDTH)) else
                          '0';
         out_fifo_empty <= '1' when out_fifo_wr_ptr_reg = out_fifo_rd_ptr_reg else
                           '0';

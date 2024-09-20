@@ -28,15 +28,6 @@ package vhdl_pkg is
 
     -- Create vector with size w and all bits set to v
     function const_V(width       : integer; v : std_logic) return std_logic_vector;
-
-    -- mask data and check result for equality: (data & mask) == check
-    function mask_check(data     : std_logic_vector; mask : std_logic_vector; check : std_logic_vector) return boolean;
-
-    -- conditionally invert data and check result for equality: (data ^ mask) == check
-    function xor_check(data      : std_logic_vector; mask : std_logic_vector; check : std_logic_vector) return boolean;
-
-    -- common fifo is full check of two pointers: full when first MSB different but rest same
-    function fifo_is_full(a      : unsigned; b : unsigned) return boolean;
 end package;
 
 package body vhdl_pkg is
@@ -116,28 +107,5 @@ package body vhdl_pkg is
         variable const         : std_logic_vector(width - 1 downto 0) := (others => v);
     begin
         return const;
-    end function;
-
-    function mask_check(data : std_logic_vector; mask : std_logic_vector; check : std_logic_vector) return boolean is
-        constant common_len      : natural                           := maximum(data'length, maximum(mask'length, check'length));
-        variable data_u          : unsigned(common_len - 1 downto 0) := resize(unsigned(data), common_len);
-        variable mask_u          : unsigned(common_len - 1 downto 0) := resize(unsigned(mask), common_len);
-        variable check_u         : unsigned(common_len - 1 downto 0) := resize(unsigned(check), common_len);
-    begin
-        return ((data_u and mask_u) = check_u);
-    end function;
-
-    function xor_check(data : std_logic_vector; mask : std_logic_vector; check : std_logic_vector) return boolean is
-        constant common_len     : natural                           := maximum(data'length, maximum(mask'length, check'length));
-        variable data_u         : unsigned(common_len - 1 downto 0) := resize(unsigned(data), common_len);
-        variable mask_u         : unsigned(common_len - 1 downto 0) := resize(unsigned(mask), common_len);
-        variable check_u        : unsigned(common_len - 1 downto 0) := resize(unsigned(check), common_len);
-    begin
-        return ((data_u xor mask_u) = check_u);
-    end function;
-
-    function fifo_is_full(a : unsigned; b : unsigned) return boolean is begin
-        -- full when first MSB different but rest same
-        return a(a'length - 1) /= b(b'length - 1) and a(a'length - 2 downto 0) = b(b'length - 2 downto 0);
     end function;
 end package body;

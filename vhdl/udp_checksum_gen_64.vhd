@@ -332,7 +332,9 @@ begin
     --
 
     -- full when first MSB different but rest same
-    header_fifo_full          <= '1' when fifo_is_full(header_fifo_wr_ptr_reg, header_fifo_rd_ptr_reg) else
+    header_fifo_full <= '1' when
+                        header_fifo_wr_ptr_reg(HEADER_FIFO_ADDR_WIDTH) /= header_fifo_rd_ptr_reg(HEADER_FIFO_ADDR_WIDTH) and
+                        header_fifo_wr_ptr_reg(HEADER_FIFO_ADDR_WIDTH - 1 downto 0) = header_fifo_rd_ptr_reg(HEADER_FIFO_ADDR_WIDTH - 1 downto 0) else
                         '0';
 
     -- empty when pointers match exactly

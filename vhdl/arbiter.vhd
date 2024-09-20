@@ -112,14 +112,12 @@ begin
         grant_encoded_next <= (others => '0');
         mask_next          <= mask_reg;
 
-        --  grant_reg & request
-        if ARB_BLOCK /= 0 and ARB_BLOCK_ACK = 0 and mask_check(grant_reg, request, request)  then
+        if ARB_BLOCK /= 0 and ARB_BLOCK_ACK = 0 and unsigned(grant_reg and request) /= 0 then
             -- granted request still asserted; hold it
             grant_valid_next   <= grant_valid_reg;
             grant_next         <= grant_reg;
             grant_encoded_next <= grant_encoded_reg;
-            -- !(grant_reg & acknowledge) => mask_check(grant_reg, acknowledge, const_0(PORTS))
-        elsif ARB_BLOCK /= 0 and ARB_BLOCK_ACK /= 0 and grant_valid = '1' and mask_check(grant_reg, acknowledge, const_0(PORTS)) then
+        elsif ARB_BLOCK /= 0 and ARB_BLOCK_ACK /= 0 and grant_valid = '1' and unsigned(grant_reg and acknowledge) = 0 then
             -- granted request not yet acknowledged; hold it
             grant_valid_next   <= grant_valid_reg;
             grant_next         <= grant_reg;
@@ -130,7 +128,7 @@ begin
                     grant_valid_next   <= '1';
                     grant_next         <= masked_request_mask;
                     grant_encoded_next <= masked_request_index;
-                    if ARB_LSB_HIGH_PRIORITY = 1 then
+                    if ARB_LSB_HIGH_PRIORITY /= 0 then
                         mask_next <= const_1(PORTS) sll (to_integer(unsigned(masked_request_index)) + 1);
                     else
                         mask_next <= const_1(PORTS) srl (PORTS - to_integer(unsigned(masked_request_index)));
@@ -139,7 +137,7 @@ begin
                     grant_valid_next   <= '1';
                     grant_next         <= request_mask;
                     grant_encoded_next <= request_index;
-                    if ARB_LSB_HIGH_PRIORITY = 1 then
+                    if ARB_LSB_HIGH_PRIORITY /= 0 then
                         mask_next <= const_1(PORTS) sll (to_integer(unsigned(request_index)) + 1);
                     else
                         mask_next <= const_1(PORTS) srl (PORTS - to_integer(unsigned(request_index)));

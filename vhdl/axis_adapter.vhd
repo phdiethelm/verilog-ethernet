@@ -184,7 +184,7 @@ begin
 
                     if seg_reg = 0 then
                         m_axis_tdata_reg((seg_reg + 1) * SEG_DATA_WIDTH - 1 downto seg_reg * SEG_DATA_WIDTH) <= ternary(s_axis_tvalid_reg = '1', s_axis_tdata_reg, s_axis_tdata);
-                        m_axis_tkeep_reg                                                                     <= ternary(s_axis_tvalid_reg = '1', s_axis_tkeep_reg, s_axis_tkeep);
+                        m_axis_tkeep_reg <= std_logic_vector(resize(unsigned(ternary(s_axis_tvalid_reg = '1', s_axis_tkeep_reg, s_axis_tkeep)), m_axis_tkeep_reg'length));
                     else
                         m_axis_tdata_reg((seg_reg + 1) * SEG_DATA_WIDTH - 1 downto seg_reg * SEG_DATA_WIDTH) <= s_axis_tdata;
                         m_axis_tkeep_reg((seg_reg + 1) * SEG_KEEP_WIDTH - 1 downto seg_reg * SEG_KEEP_WIDTH) <= s_axis_tkeep;

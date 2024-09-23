@@ -127,9 +127,9 @@ entity axis_async_fifo_adapter is
         --
         -- Pause
         --
-        signal s_pause_req           : in  std_logic;
+        signal s_pause_req           : in  std_logic := '0';
         signal s_pause_ack           : out std_logic;
-        signal m_pause_req           : in  std_logic;
+        signal m_pause_req           : in  std_logic := '0';
         signal m_pause_ack           : out std_logic;
 
         --

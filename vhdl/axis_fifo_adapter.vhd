@@ -127,7 +127,7 @@ entity axis_fifo_adapter is
         -- 
         --  Pause
         -- 
-        signal pause_req           : in  std_logic;
+        signal pause_req           : in  std_logic := '0';
         signal pause_ack           : out std_logic;
 
         -- 
